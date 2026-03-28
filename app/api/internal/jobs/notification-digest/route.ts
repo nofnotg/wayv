@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { buildNotificationDigestPreview } from "@/lib/services/notification-candidate-service";
 import { getCronSecret } from "@/lib/supabase/env";
 
 function isAuthorized(request: NextRequest) {
@@ -12,8 +13,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json(
-    { ok: false, status: "stub", message: "notification digest job will be implemented next." },
-    { status: 501 }
-  );
+  const preview = await buildNotificationDigestPreview();
+  return NextResponse.json({
+    ok: true,
+    status: "ready-for-delivery-layer",
+    userCount: preview.length,
+    preview
+  });
 }

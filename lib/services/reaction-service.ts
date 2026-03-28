@@ -6,6 +6,7 @@ import type { WaveReactionSummary, WaveReactionType } from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { reactionMutationSchema } from "@/lib/validation/schemas";
 
+import { getWavePostAccess } from "@/lib/services/wave-access-service";
 import { refreshWaveSnapshot } from "@/lib/services/wave-state-service";
 
 export function getReactionCatalog() {
@@ -56,6 +57,14 @@ export async function addReaction(
     throw new Error("invalid-reaction");
   }
 
+  const access = await getWavePostAccess(postId, userId);
+  if (!access) {
+    throw new Error("not-found");
+  }
+  if (!access.moderation.interactionsEnabled) {
+    throw new Error("interactions-paused");
+  }
+
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.from("wave_reactions").upsert(
     {
@@ -84,6 +93,14 @@ export async function removeReaction(
   const parsed = reactionMutationSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("invalid-reaction");
+  }
+
+  const access = await getWavePostAccess(postId, userId);
+  if (!access) {
+    throw new Error("not-found");
+  }
+  if (!access.moderation.interactionsEnabled) {
+    throw new Error("interactions-paused");
   }
 
   const supabase = await createServerSupabaseClient();

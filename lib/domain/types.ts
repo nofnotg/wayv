@@ -106,6 +106,19 @@ export const moderationStatusValues = [
 
 export type ModerationStatus = (typeof moderationStatusValues)[number];
 
+export const moderationReportTargetTypeValues = ["post", "comment"] as const;
+export type ModerationReportTargetType = (typeof moderationReportTargetTypeValues)[number];
+
+export const moderationReportReasonValues = [
+  "harmful_expression",
+  "personal_attack",
+  "privacy_exposure",
+  "graphic_or_triggering",
+  "spam_or_promotion",
+  "other"
+] as const;
+export type ModerationReportReason = (typeof moderationReportReasonValues)[number];
+
 export const preferredWaveToneValues = ["quiet", "resonant", "light", "mixed"] as const;
 export type PreferredWaveTone = (typeof preferredWaveToneValues)[number];
 
@@ -226,17 +239,31 @@ export type WaveComment = {
   postId: string;
   userId: string;
   body: string;
+  displayBody: string;
   moderationStatus: ModerationStatus;
   createdAt: string;
   updatedAt: string;
   authorLabel: string;
   isMine: boolean;
+  moderationNotice: string | null;
+  canReport: boolean;
+  interactionsEnabled: boolean;
+};
+
+export type ModerationPresentation = {
+  status: ModerationStatus;
+  title: string | null;
+  description: string | null;
+  contentVisible: boolean;
+  interactionsEnabled: boolean;
+  canReport: boolean;
 };
 
 export type WaveDetail = WavePost & {
   reactionSummary: WaveReactionSummary[];
   viewerReactionTypes: WaveReactionType[];
   comments: WaveComment[];
+  moderation: ModerationPresentation;
 };
 
 export type RestModeSetting = {
@@ -279,4 +306,27 @@ export type NotificationDevice = {
   lastSeenAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ModerationReport = {
+  id: string;
+  reporterUserId: string;
+  targetType: ModerationReportTargetType;
+  targetId: string;
+  reasonKey: ModerationReportReason;
+  note: string | null;
+  createdAt: string;
+};
+
+export type NotificationCandidateLane = "for_you" | "rekindled" | "quiet_digest" | "operational";
+
+export type NotificationCandidate = {
+  userId: string;
+  type: NotificationEventType;
+  lane: NotificationCandidateLane;
+  title: string;
+  body: string;
+  postId: string | null;
+  waveState: WaveState | null;
+  createdAt: string;
 };

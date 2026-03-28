@@ -3,6 +3,7 @@ import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
 import { formatDateTime } from "@/lib/utils";
 
+import { ReportAction } from "@/features/moderation/report-action";
 import { CommentsPanel } from "@/features/waves/comments-panel";
 import { ReactionBar } from "@/features/waves/reaction-bar";
 
@@ -19,6 +20,14 @@ export function WaveDetail({ post, isAuthenticated, reactionCatalog }: WaveDetai
   return (
     <div className="grid gap-6">
       <article className="rounded-[2rem] border border-white/70 bg-white/85 p-8 shadow-[0_24px_64px_rgba(15,23,42,0.07)] backdrop-blur">
+        {post.moderation.title ? (
+          <div className="mb-5 rounded-[1.5rem] border border-amber-100 bg-amber-50 px-5 py-4">
+            <p className="text-sm font-medium text-amber-950">{post.moderation.title}</p>
+            {post.moderation.description ? (
+              <p className="mt-2 text-sm leading-7 text-amber-900">{post.moderation.description}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <StatusChip label={systemCopy.waveStates[post.state]} tone="active" />
           <StatusChip label={post.visibility === "public" ? "공개 파도" : "보관 파도"} />
@@ -27,33 +36,53 @@ export function WaveDetail({ post, isAuthenticated, reactionCatalog }: WaveDetai
           {post.title ?? "제목 없이 남긴 파도"}
         </h1>
         <p className="mt-3 text-sm text-slate-500">{formatDateTime(post.createdAt)}</p>
-        <div className="mt-6 flex flex-wrap gap-2 text-sm text-slate-600">
-          {post.categories.map((category) => (
-            <span key={category} className="rounded-full bg-slate-100 px-3 py-1">
-              {category}
-            </span>
-          ))}
-          {post.emotionTags.map((emotion) => (
-            <span key={emotion} className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-900">
-              {emotion}
-            </span>
-          ))}
-        </div>
-        <div className="mt-8 whitespace-pre-wrap leading-8 text-slate-800">{post.body}</div>
+        {post.moderation.contentVisible ? (
+          <>
+            <div className="mt-6 flex flex-wrap gap-2 text-sm text-slate-600">
+              {post.categories.map((category) => (
+                <span key={category} className="rounded-full bg-slate-100 px-3 py-1">
+                  {category}
+                </span>
+              ))}
+              {post.emotionTags.map((emotion) => (
+                <span key={emotion} className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-900">
+                  {emotion}
+                </span>
+              ))}
+            </div>
+            <div className="mt-8 whitespace-pre-wrap leading-8 text-slate-800">{post.body}</div>
+          </>
+        ) : (
+          <p className="mt-8 text-sm leading-7 text-slate-600">
+            {post.moderation.description ?? systemCopy.moderation.removedDescription}
+          </p>
+        )}
+        {post.moderation.canReport ? (
+          <div className="mt-6">
+            <ReportAction targetType="post" targetId={post.id} isAuthenticated={isAuthenticated} />
+          </div>
+        ) : null}
       </article>
 
-      <ReactionBar
-        postId={post.id}
-        isAuthenticated={isAuthenticated}
-        initialSummary={post.reactionSummary}
-        initialViewerReactionTypes={post.viewerReactionTypes}
-        catalog={reactionCatalog}
-      />
+      {post.moderation.interactionsEnabled ? (
+        <ReactionBar
+          postId={post.id}
+          isAuthenticated={isAuthenticated}
+          initialSummary={post.reactionSummary}
+          initialViewerReactionTypes={post.viewerReactionTypes}
+          catalog={reactionCatalog}
+        />
+      ) : (
+        <section className="rounded-[2rem] border border-white/70 bg-white/85 p-6 shadow-[0_24px_64px_rgba(15,23,42,0.07)] backdrop-blur">
+          <p className="text-sm text-slate-600">{systemCopy.moderation.interactionsPaused}</p>
+        </section>
+      )}
 
       <CommentsPanel
         postId={post.id}
         isAuthenticated={isAuthenticated}
         initialComments={post.comments}
+        interactionsEnabled={post.moderation.interactionsEnabled}
       />
     </div>
   );

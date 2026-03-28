@@ -50,7 +50,12 @@ export function ReactionBar({
       });
 
       if (!response.ok) {
-        setMessage("반응을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+        const data = await response.json().catch(() => null);
+        setMessage(
+          data?.error === "interactions-paused"
+            ? systemCopy.moderation.interactionsPaused
+            : "반응을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요."
+        );
         return;
       }
 

@@ -165,14 +165,27 @@ export function buildViewerSignalProfile(input: {
     addEmotionAffinity(emotionAffinity, post.emotionTags, 4);
   }
 
+  const strongestReactionPerPost = new Map<string, ViewerReactionSignal>();
   for (const signal of input.reactedPosts) {
+    const existing = strongestReactionPerPost.get(signal.post.id);
+    if (!existing || interactionWeights[signal.reactionType] > interactionWeights[existing.reactionType]) {
+      strongestReactionPerPost.set(signal.post.id, signal);
+    }
+  }
+
+  for (const signal of strongestReactionPerPost.values()) {
     reactedPostIds.add(signal.post.id);
     const weight = interactionWeights[signal.reactionType] ?? 1;
     addCategoryAffinity(categoryAffinity, signal.post.categories, weight);
     addEmotionAffinity(emotionAffinity, signal.post.emotionTags, Math.max(0.6, weight - 0.4));
   }
 
+  const uniqueCommentedPosts = new Map<string, WavePost>();
   for (const post of input.commentedPosts) {
+    uniqueCommentedPosts.set(post.id, post);
+  }
+
+  for (const post of uniqueCommentedPosts.values()) {
     commentedPostIds.add(post.id);
     addCategoryAffinity(categoryAffinity, post.categories, 3);
     addEmotionAffinity(emotionAffinity, post.emotionTags, 2.5);

@@ -1,39 +1,42 @@
 import { revalidatePath } from "next/cache";
 
 import type { WaveComment } from "@/lib/domain/types";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import { commentSchema } from "@/lib/validation/schemas";
 
+import { presentCommentForViewer } from "@/lib/services/moderation-service";
+import { getWavePostAccess } from "@/lib/services/wave-access-service";
 import { refreshWaveSnapshot } from "@/lib/services/wave-state-service";
 
-function getAuthorLabel(userId: string, viewerId?: string | null) {
-  if (viewerId && userId === viewerId) {
-    return "내가 남긴 말";
+export async function listCommentsForPost(postId: string, viewerId?: string | null) {
+  const access = await getWavePostAccess(postId, viewerId);
+  if (!access) {
+    return [];
   }
 
-  return "익명의 파도";
-}
-
-export async function listCommentsForPost(postId: string, viewerId?: string | null) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
   const { data } = await supabase
     .from("wave_comments")
     .select("*")
     .eq("post_id", postId)
-    .eq("moderation_status", "active")
     .order("created_at", { ascending: true });
 
-  return (data ?? []).map((row): WaveComment => ({
-    id: String(row.id),
-    postId: String(row.post_id),
-    userId: String(row.user_id),
-    body: String(row.body),
-    moderationStatus: row.moderation_status,
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-    authorLabel: getAuthorLabel(String(row.user_id), viewerId),
-    isMine: viewerId === String(row.user_id)
-  }));
+  return (data ?? [])
+    .map((row) =>
+      presentCommentForViewer(
+        {
+          id: String(row.id),
+          post_id: String(row.post_id),
+          user_id: String(row.user_id),
+          body: String(row.body),
+          moderation_status: row.moderation_status,
+          created_at: String(row.created_at),
+          updated_at: String(row.updated_at)
+        },
+        viewerId
+      )
+    )
+    .filter((row): row is WaveComment => Boolean(row));
 }
 
 export async function createComment(
@@ -44,6 +47,14 @@ export async function createComment(
   const parsed = commentSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("invalid-comment");
+  }
+
+  const access = await getWavePostAccess(postId, userId);
+  if (!access) {
+    throw new Error("not-found");
+  }
+  if (!access.moderation.interactionsEnabled) {
+    throw new Error("interactions-paused");
   }
 
   const supabase = await createServerSupabaseClient();

@@ -75,14 +75,49 @@ export const systemCopy = {
     saving: "말을 남기는 중이에요...",
     signInPrompt: "짧은 말을 남기려면 먼저 로그인해 주세요."
   },
+  reporting: {
+    title: "조금 더 안전하게 살펴봐야 할 흐름인가요?",
+    description: "이유를 짧게 남겨 주시면 운영 흐름에서 먼저 살펴볼게요.",
+    triggerPost: "이 파도 알리기",
+    triggerComment: "이 말 알리기",
+    submit: "운영 흐름에 남기기",
+    saving: "운영 흐름에 남기는 중이에요...",
+    success: "운영 흐름에 조용히 남겨 두었어요.",
+    signInPrompt: "알리려면 먼저 로그인해 주세요.",
+    notePlaceholder: "필요하면 짧게 덧붙여도 괜찮아요.",
+    reasons: {
+      harmful_expression: "해를 끼칠 수 있는 표현",
+      personal_attack: "누군가를 직접 겨누는 표현",
+      privacy_exposure: "개인정보가 드러난 내용",
+      graphic_or_triggering: "자극이 너무 큰 내용",
+      spam_or_promotion: "홍보나 반복성 글",
+      other: "다른 이유"
+    }
+  },
   notifications: {
     quietDigest: "오늘은 여러 흐름이 잔잔하게 이어지고 있어요.",
-    operationalNotice: "필요한 안내만 조용히 전해 드릴게요."
+    operationalNotice: "필요한 안내만 조용히 전해 드릴게요.",
+    candidateForYouTitle: "지금 닿을 만한 파도가 있어요.",
+    candidateRekindledTitle: "다시 일렁이는 파도가 있어요.",
+    candidateRestingSuppressed: "해변에서 쉬는 동안에는 먼저 닿는 알림을 잠시 줄여 둘게요."
   },
   moderation: {
     gentleRewrite: "같은 마음이 조금 더 안전하게 닿도록, 표현을 조금 다듬어 볼게요.",
     safetyPause:
-      "지금 이 내용은 잠시 숨을 고르고, 더 안전하게 전할 수 있는 방법을 먼저 살펴볼게요."
+      "지금 이 내용은 잠시 숨을 고르고, 더 안전하게 전할 수 있는 방법을 먼저 살펴볼게요.",
+    limitedPostTitle: "이 파도는 조금 더 잔잔한 방식으로 다루고 있어요.",
+    limitedPostDescription:
+      "지금은 넓게 퍼뜨리지 않고, 직접 찾아온 흐름 안에서만 조심스럽게 두고 있어요.",
+    underReviewTitle: "이 파도는 잠시 살펴보고 있어요.",
+    underReviewDescription:
+      "조금 더 안전하게 닿을 수 있는지 먼저 확인하고 있어요. 확인이 끝나면 다시 이어질 수 있어요.",
+    removedTitle: "이 파도는 잠시 내려 두었어요.",
+    removedDescription:
+      "지금은 그대로 두기보다 잠시 걷어 두는 편이 더 안전하다고 판단했어요.",
+    limitedComment: "이 말은 조금 더 잔잔한 방식으로만 남겨 두고 있어요.",
+    underReviewComment: "이 말은 잠시 살펴보고 있어요.",
+    removedComment: "이 말은 잠시 내려 두었어요.",
+    interactionsPaused: "이 흐름은 지금은 조용히 살펴보는 상태라, 새 반응과 말을 잠시 쉬고 있어요."
   },
   waveStates: {
     calm: "잔잔한 파도",

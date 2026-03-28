@@ -10,6 +10,7 @@ import { wavePostSchema } from "@/lib/validation/schemas";
 
 import { listCommentsForPost } from "@/lib/services/comment-service";
 import { getReactionState } from "@/lib/services/reaction-service";
+import { getWavePostAccess } from "@/lib/services/wave-access-service";
 
 export async function createWavePostEntry(
   input: {
@@ -105,71 +106,38 @@ export async function createWavePostAction(formData: FormData) {
   }
 }
 
-export async function getWavePostById(postId: string): Promise<WavePost | null> {
-  const supabase = await createServerSupabaseClient();
-  const { data: post } = await supabase
-    .from("wave_posts")
-    .select(
-      `
-      id,
-      author_user_id,
-      title,
-      body,
-      visibility_scope,
-      moderation_status,
-      created_at,
-      updated_at,
-      archived_at,
-      wave_post_categories ( category_key ),
-      wave_post_emotions ( emotion_key ),
-      wave_state_snapshots ( current_state )
-    `
-    )
-    .eq("id", postId)
-    .single();
-
-  if (!post) {
-    return null;
-  }
-
-  return {
-    id: String(post.id),
-    authorId: String(post.author_user_id),
-    title: (post.title as string | null) ?? null,
-    body: String(post.body),
-    categories: (post.wave_post_categories ?? []).map(
-      (item: { category_key: WaveCategory }) => item.category_key
-    ),
-    emotionTags: (post.wave_post_emotions ?? []).map(
-      (item: { emotion_key: EmotionTag }) => item.emotion_key
-    ),
-    visibility: post.visibility_scope,
-    moderationStatus: post.moderation_status,
-    createdAt: String(post.created_at),
-    updatedAt: String(post.updated_at),
-    archivedAt: (post.archived_at as string | null) ?? null,
-    state: post.wave_state_snapshots?.[0]?.current_state ?? "calm"
-  };
+export async function getWavePostById(
+  postId: string,
+  viewerId?: string | null
+): Promise<WavePost | null> {
+  const access = await getWavePostAccess(postId, viewerId);
+  return access?.post ?? null;
 }
 
 export async function getWaveDetailById(
   postId: string,
   viewerId?: string | null
 ): Promise<WaveDetail | null> {
-  const post = await getWavePostById(postId);
-  if (!post) {
+  const access = await getWavePostAccess(postId, viewerId);
+  if (!access) {
     return null;
   }
 
+  const { post, moderation } = access;
   const [reactionState, comments] = await Promise.all([
-    getReactionState(postId, viewerId),
+    moderation.interactionsEnabled
+      ? getReactionState(postId, viewerId)
+      : Promise.resolve({ summary: [], viewerReactionTypes: [], catalog: [] }),
     listCommentsForPost(postId, viewerId)
   ]);
 
   return {
     ...post,
+    title: moderation.contentVisible ? post.title : null,
+    body: moderation.contentVisible ? post.body : "",
     reactionSummary: reactionState.summary,
     viewerReactionTypes: reactionState.viewerReactionTypes,
-    comments
+    comments,
+    moderation
   };
 }

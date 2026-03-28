@@ -86,4 +86,29 @@ describe("feed service", () => {
     expect(lanes.for_you).toEqual([]);
     expect(lanes.rekindled[0]?.id).toBe("rest-post");
   });
+
+  it("does not overweight repeated comments on the same post", () => {
+    const repeatedPost = createPost({
+      id: "repeated-comment-post",
+      categories: ["health"],
+      emotionTags: ["anxiety"]
+    });
+
+    const once = buildViewerSignalProfile({
+      authoredPosts: [],
+      reactedPosts: [],
+      commentedPosts: [repeatedPost],
+      seedProfile: null
+    });
+
+    const repeated = buildViewerSignalProfile({
+      authoredPosts: [],
+      reactedPosts: [],
+      commentedPosts: [repeatedPost, repeatedPost, repeatedPost],
+      seedProfile: null
+    });
+
+    expect(repeated.categoryAffinity.health).toBe(once.categoryAffinity.health);
+    expect(repeated.emotionAffinity.anxiety).toBe(once.emotionAffinity.anxiety);
+  });
 });
