@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   emotionTagValues,
+  moderationStatusValues,
   moderationReportReasonValues,
   notificationDigestModeValues,
   notificationPlatformValues,
@@ -84,6 +85,10 @@ export const commentSchema = z.object({
 export const moderationReportSchema = z.object({
   reasonKey: z.enum(moderationReportReasonValues),
   note: z.string().trim().max(280).nullable().optional()
+});
+
+export const moderationUpdateSchema = z.object({
+  status: z.enum(moderationStatusValues)
 });
 
 export const notificationDeviceSchema = z.object({

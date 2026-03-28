@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { buildNotificationDigestPreview } from "@/lib/services/notification-candidate-service";
-import { getCronSecret } from "@/lib/supabase/env";
-
-function isAuthorized(request: NextRequest) {
-  const secret = getCronSecret();
-  return secret ? request.headers.get("x-cron-secret") === secret : false;
-}
+import { isInternalRequestAuthorized } from "@/lib/services/internal-auth-service";
+import { runNotificationDigestJob } from "@/lib/services/notification-event-service";
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isInternalRequestAuthorized(request)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const preview = await buildNotificationDigestPreview();
+  const limit = Number(new URL(request.url).searchParams.get("limit") ?? "20");
+  const result = await runNotificationDigestJob(limit);
   return NextResponse.json({
     ok: true,
-    status: "ready-for-delivery-layer",
-    userCount: preview.length,
-    preview
+    status: "events-persisted",
+    ...result
   });
 }

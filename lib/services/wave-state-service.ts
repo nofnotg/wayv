@@ -5,14 +5,14 @@ import {
   determineWaveState,
   type ReactionSignalCounts
 } from "@/lib/domain/wave-engine";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/server";
 
 function hoursBetween(from: string, to: Date) {
   return Math.max(0, (to.getTime() - new Date(from).getTime()) / (1000 * 60 * 60));
 }
 
 export async function refreshWaveSnapshot(postId: string) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
   const now = new Date();
   const lookbackCutoff = new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString();
 

@@ -51,7 +51,7 @@ const categoryLabels: Record<WaveCategory, string> = {
   money: "돈과 생활",
   relationships: "관계",
   family: "가족",
-  study: "학업과 진로",
+  study: "공부와 진로",
   health: "건강",
   daily_life: "일상"
 };
@@ -100,11 +100,11 @@ function mapPostRow(post: PostRow): WavePost {
 
 function buildWeatherCopy(topic: string, state: WaveState) {
   if (state === "rekindled") {
-    return `${topic} 이야기가 다시 일렁이고 있어요.`;
+    return `${topic} 이야기가 다시 천천히 일렁이고 있어요.`;
   }
 
   if (state === "lingering") {
-    return `오늘은 ${topic} 흐름의 파도가 길게 이어지고 있어요.`;
+    return `오늘은 ${topic} 흐름이 길게 머물고 있어요.`;
   }
 
   if (state === "surging") {
@@ -116,7 +116,7 @@ function buildWeatherCopy(topic: string, state: WaveState) {
   }
 
   if (state === "fading") {
-    return `${topic} 이야기가 한결 잔잔해지고 있어요.`;
+    return `${topic} 흐름이 조용히 잦아들고 있어요.`;
   }
 
   return `${topic} 이야기가 잔잔하게 이어지고 있어요.`;

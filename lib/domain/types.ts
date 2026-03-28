@@ -90,12 +90,26 @@ export type NotificationEventType = (typeof notificationEventTypeValues)[number]
 
 export const notificationEventStateValues = [
   "pending",
+  "suppressed",
+  "skipped_duplicate",
+  "operational_only",
   "sent",
   "read",
   "dismissed"
 ] as const;
 
 export type NotificationEventState = (typeof notificationEventStateValues)[number];
+
+export const notificationSuppressionReasonValues = [
+  "rest_mode",
+  "preferences_disabled",
+  "quiet_hours",
+  "duplicate_window",
+  "operational_disabled"
+] as const;
+
+export type NotificationSuppressionReason =
+  (typeof notificationSuppressionReasonValues)[number];
 
 export const moderationStatusValues = [
   "active",
@@ -288,9 +302,13 @@ export type NotificationEvent = {
   userId: string;
   type: NotificationEventType;
   channel: NotificationChannel;
+  postId?: string | null;
+  lane?: NotificationCandidateLane | null;
   title: string;
   body: string;
   state: NotificationEventState;
+  suppressionReason?: NotificationSuppressionReason | null;
+  dedupeKey?: string | null;
   createdAt: string;
 };
 
@@ -318,6 +336,14 @@ export type ModerationReport = {
   createdAt: string;
 };
 
+export type ModerationReportListItem = ModerationReport & {
+  targetStatus: ModerationStatus | null;
+};
+
+export type ModeratorActionInput = {
+  status: ModerationStatus;
+};
+
 export type NotificationCandidateLane = "for_you" | "rekindled" | "quiet_digest" | "operational";
 
 export type NotificationCandidate = {
@@ -329,4 +355,27 @@ export type NotificationCandidate = {
   postId: string | null;
   waveState: WaveState | null;
   createdAt: string;
+};
+
+export type NotificationEventDecision = {
+  userId: string;
+  type: NotificationEventType;
+  channel: NotificationChannel;
+  lane: NotificationCandidateLane | null;
+  postId: string | null;
+  title: string;
+  body: string;
+  state: NotificationEventState;
+  suppressionReason: NotificationSuppressionReason | null;
+  dedupeKey: string;
+};
+
+export type NotificationEventWriteSummary = {
+  usersScanned: number;
+  eventsCreated: number;
+  duplicatesSkipped: number;
+  suppressedByRestMode: number;
+  suppressedByPreference: number;
+  suppressedByQuietHours: number;
+  operationalOnly: number;
 };

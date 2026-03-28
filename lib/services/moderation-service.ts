@@ -88,6 +88,9 @@ export function presentCommentForViewer(
   viewerId?: string | null
 ): WaveComment | null {
   const isMine = viewerId === row.user_id;
+  const authorLabel = isMine
+    ? systemCopy.moderation.myCommentLabel
+    : systemCopy.moderation.anonymousCommentLabel;
 
   if (row.moderation_status === "under_review") {
     if (!isMine) {
@@ -103,7 +106,7 @@ export function presentCommentForViewer(
       moderationStatus: row.moderation_status,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      authorLabel: "내가 남긴 말",
+      authorLabel: systemCopy.moderation.myCommentLabel,
       isMine,
       moderationNotice: systemCopy.moderation.underReviewComment,
       canReport: false,
@@ -125,15 +128,13 @@ export function presentCommentForViewer(
       moderationStatus: row.moderation_status,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      authorLabel: "내가 남긴 말",
+      authorLabel: systemCopy.moderation.myCommentLabel,
       isMine,
       moderationNotice: systemCopy.moderation.removedComment,
       canReport: false,
       interactionsEnabled: false
     };
   }
-
-  const authorLabel = isMine ? "내가 남긴 말" : "익명의 파도";
 
   if (row.moderation_status === "limited") {
     return {

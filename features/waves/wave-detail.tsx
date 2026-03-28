@@ -30,10 +30,12 @@ export function WaveDetail({ post, isAuthenticated, reactionCatalog }: WaveDetai
         ) : null}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <StatusChip label={systemCopy.waveStates[post.state]} tone="active" />
-          <StatusChip label={post.visibility === "public" ? "공개 파도" : "보관 파도"} />
+          <StatusChip
+            label={post.visibility === "public" ? systemCopy.wave.publicLabel : systemCopy.wave.privateLabel}
+          />
         </div>
         <h1 className="font-serif text-4xl tracking-tight text-slate-950">
-          {post.title ?? "제목 없이 남긴 파도"}
+          {post.title ?? systemCopy.wave.untitled}
         </h1>
         <p className="mt-3 text-sm text-slate-500">{formatDateTime(post.createdAt)}</p>
         {post.moderation.contentVisible ? (

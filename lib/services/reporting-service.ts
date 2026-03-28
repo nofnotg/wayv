@@ -43,6 +43,31 @@ export async function createModerationReport(
   }
 
   const supabase = await createServerSupabaseClient();
+  const existing = await supabase
+    .from("moderation_reports")
+    .select("*")
+    .eq("reporter_user_id", reporterUserId)
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .eq("reason_key", parsed.data.reasonKey)
+    .maybeSingle();
+
+  if (existing.error) {
+    throw new Error(existing.error.message);
+  }
+
+  if (existing.data) {
+    return {
+      id: String(existing.data.id),
+      reporterUserId: String(existing.data.reporter_user_id),
+      targetType: existing.data.target_type,
+      targetId: String(existing.data.target_id),
+      reasonKey: existing.data.reason_key,
+      note: existing.data.note,
+      createdAt: String(existing.data.created_at)
+    };
+  }
+
   const { data, error } = await supabase
     .from("moderation_reports")
     .insert({

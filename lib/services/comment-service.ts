@@ -10,7 +10,7 @@ import { refreshWaveSnapshot } from "@/lib/services/wave-state-service";
 
 export async function listCommentsForPost(postId: string, viewerId?: string | null) {
   const access = await getWavePostAccess(postId, viewerId);
-  if (!access) {
+  if (!access || (!access.moderation.contentVisible && !access.isOwner)) {
     return [];
   }
 

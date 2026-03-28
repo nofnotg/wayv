@@ -53,7 +53,7 @@ export function ReportAction({
       });
 
       if (!response.ok) {
-        setMessage("아직 운영 흐름에 남기지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+        setMessage(systemCopy.reporting.error);
         return;
       }
 

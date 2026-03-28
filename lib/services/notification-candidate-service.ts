@@ -17,7 +17,7 @@ import { canSurfacePostInPublicLanes } from "@/lib/services/moderation-service";
 
 type PostRow = Record<string, unknown>;
 
-type CandidateContext = {
+export type NotificationCandidateContext = {
   preference: NotificationPreference | null;
   restMode: RestModeSetting | null;
   seedProfile: OnboardingSeedProfile | null;
@@ -64,6 +64,14 @@ function getDigestLimit(preference: NotificationPreference | null) {
   return Math.max(1, Math.min(preference.maxDailyNotifications, 3));
 }
 
+function getDraftLimit(preference: NotificationPreference | null) {
+  if (!preference) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(preference.maxDailyNotifications || 1, 3));
+}
+
 function dedupeByPost(posts: WavePost[]) {
   const unique = new Map<string, WavePost>();
   for (const post of posts) {
@@ -72,23 +80,14 @@ function dedupeByPost(posts: WavePost[]) {
   return [...unique.values()];
 }
 
-export function selectNotificationCandidates(input: {
+function buildDraftCandidates(input: {
   userId: string;
   posts: WavePost[];
-  preference: NotificationPreference | null;
-  restMode: RestModeSetting | null;
   seedProfile: OnboardingSeedProfile | null;
+  restMode: RestModeSetting | null;
   viewerSignals: CandidateViewerSignals;
+  limit: number;
 }): NotificationCandidate[] {
-  const limit = getDigestLimit(input.preference);
-  if (!limit) {
-    return [];
-  }
-
-  if (input.restMode?.enabled) {
-    return [];
-  }
-
   const signalProfile = buildViewerSignalProfile({
     authoredPosts: dedupeByPost(input.viewerSignals.authoredPosts),
     reactedPosts: input.viewerSignals.reactedPosts,
@@ -108,7 +107,7 @@ export function selectNotificationCandidates(input: {
       })
     }))
     .sort((left, right) => right.score - left.score)
-    .slice(0, limit)
+    .slice(0, input.limit)
     .map(({ post }): NotificationCandidate => ({
       userId: input.userId,
       type: post.state === "rekindled" || post.state === "spreading" ? "rekindled_wave" : "for_you_wave",
@@ -141,7 +140,54 @@ export function selectNotificationCandidates(input: {
   ];
 }
 
-async function getCandidateContext(userId: string): Promise<CandidateContext> {
+export function selectNotificationCandidateDrafts(input: {
+  userId: string;
+  posts: WavePost[];
+  preference: NotificationPreference | null;
+  restMode: RestModeSetting | null;
+  seedProfile: OnboardingSeedProfile | null;
+  viewerSignals: CandidateViewerSignals;
+}): NotificationCandidate[] {
+  return buildDraftCandidates({
+    userId: input.userId,
+    posts: input.posts,
+    seedProfile: input.seedProfile,
+    restMode: input.restMode,
+    viewerSignals: input.viewerSignals,
+    limit: getDraftLimit(input.preference)
+  });
+}
+
+export function selectNotificationCandidates(input: {
+  userId: string;
+  posts: WavePost[];
+  preference: NotificationPreference | null;
+  restMode: RestModeSetting | null;
+  seedProfile: OnboardingSeedProfile | null;
+  viewerSignals: CandidateViewerSignals;
+}): NotificationCandidate[] {
+  const limit = getDigestLimit(input.preference);
+  if (!limit) {
+    return [];
+  }
+
+  if (input.restMode?.enabled) {
+    return [];
+  }
+
+  return buildDraftCandidates({
+    userId: input.userId,
+    posts: input.posts,
+    seedProfile: input.seedProfile,
+    restMode: input.restMode,
+    viewerSignals: input.viewerSignals,
+    limit
+  });
+}
+
+export async function getNotificationCandidateContextForUser(
+  userId: string
+): Promise<NotificationCandidateContext> {
   const supabase = createAdminSupabaseClient();
   const [{ data: preference }, { data: restMode }, { data: seedProfile }] = await Promise.all([
     supabase.from("notification_preferences").select("*").eq("user_id", userId).single(),
@@ -316,9 +362,26 @@ async function fetchCandidatePosts() {
   return (data ?? []).map((row) => mapPostRow(row as PostRow));
 }
 
+export async function buildNotificationCandidateDraftsForUser(userId: string) {
+  const [context, viewerSignals, posts] = await Promise.all([
+    getNotificationCandidateContextForUser(userId),
+    fetchViewerSignals(userId),
+    fetchCandidatePosts()
+  ]);
+
+  return selectNotificationCandidateDrafts({
+    userId,
+    posts,
+    preference: context.preference,
+    restMode: context.restMode,
+    seedProfile: context.seedProfile,
+    viewerSignals
+  });
+}
+
 export async function buildNotificationCandidatesForUser(userId: string) {
   const [context, viewerSignals, posts] = await Promise.all([
-    getCandidateContext(userId),
+    getNotificationCandidateContextForUser(userId),
     fetchViewerSignals(userId),
     fetchCandidatePosts()
   ]);

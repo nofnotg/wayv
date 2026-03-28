@@ -46,10 +46,10 @@ export function CommentsPanel({
         const data = await response.json().catch(() => null);
         setError(
           data?.error === "invalid-comment"
-            ? "짧은 말은 2자 이상 500자 이하로 남겨 주세요."
+            ? systemCopy.comments.invalid
             : data?.error === "interactions-paused"
               ? systemCopy.moderation.interactionsPaused
-            : "말을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요."
+              : systemCopy.comments.saveError
         );
         return;
       }
