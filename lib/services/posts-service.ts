@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { determineWaveState } from "@/lib/domain/wave-engine";
-import type { EmotionTag, WaveCategory, WavePost } from "@/lib/domain/types";
+import type { EmotionTag, WaveCategory, WaveDetail, WavePost } from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { wavePostSchema } from "@/lib/validation/schemas";
+
+import { listCommentsForPost } from "@/lib/services/comment-service";
+import { getReactionState } from "@/lib/services/reaction-service";
 
 export async function createWavePostEntry(
   input: {
@@ -146,5 +149,27 @@ export async function getWavePostById(postId: string): Promise<WavePost | null> 
     updatedAt: String(post.updated_at),
     archivedAt: (post.archived_at as string | null) ?? null,
     state: post.wave_state_snapshots?.[0]?.current_state ?? "calm"
+  };
+}
+
+export async function getWaveDetailById(
+  postId: string,
+  viewerId?: string | null
+): Promise<WaveDetail | null> {
+  const post = await getWavePostById(postId);
+  if (!post) {
+    return null;
+  }
+
+  const [reactionState, comments] = await Promise.all([
+    getReactionState(postId, viewerId),
+    listCommentsForPost(postId, viewerId)
+  ]);
+
+  return {
+    ...post,
+    reactionSummary: reactionState.summary,
+    viewerReactionTypes: reactionState.viewerReactionTypes,
+    comments
   };
 }

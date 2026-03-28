@@ -13,8 +13,8 @@ import {
 describe("wave engine", () => {
   it("calculates raw energy from weighted signals", () => {
     const value = calculateRawEnergy({
-      touched: 2,
-      ive_been_there: 1,
+      touched_me: 2,
+      me_too: 1,
       meaningful_comment: 1
     });
 

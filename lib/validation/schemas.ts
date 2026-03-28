@@ -5,6 +5,7 @@ import {
   notificationDigestModeValues,
   notificationPlatformValues,
   profileVisibilityValues,
+  waveReactionTypeValues,
   waveCategoryValues
 } from "@/lib/domain/types";
 
@@ -69,6 +70,14 @@ export const wavePostSchema = z.object({
   categories: z.array(z.enum(waveCategoryValues)).min(1).max(3),
   emotionTags: z.array(z.enum(emotionTagValues)).max(3).default([]),
   visibility: z.enum(["public", "private_archive"]).default("public")
+});
+
+export const reactionMutationSchema = z.object({
+  reactionType: z.enum(waveReactionTypeValues)
+});
+
+export const commentSchema = z.object({
+  body: z.string().trim().min(2).max(500)
 });
 
 export const notificationDeviceSchema = z.object({

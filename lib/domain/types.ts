@@ -41,10 +41,10 @@ export const emotionTagValues = [
 export type EmotionTag = (typeof emotionTagValues)[number];
 
 export const waveReactionTypeValues = [
-  "touched",
-  "ive_been_there",
-  "add_wave",
-  "stay_quiet",
+  "touched_me",
+  "me_too",
+  "add_my_wave",
+  "stay_quietly",
   "meaningful_comment",
   "save",
   "qualified_dwell"
@@ -214,6 +214,29 @@ export type WavePost = {
   updatedAt: string;
   archivedAt: string | null;
   state: WaveState;
+};
+
+export type WaveReactionSummary = {
+  reactionType: WaveReactionType;
+  hasActivity: boolean;
+};
+
+export type WaveComment = {
+  id: string;
+  postId: string;
+  userId: string;
+  body: string;
+  moderationStatus: ModerationStatus;
+  createdAt: string;
+  updatedAt: string;
+  authorLabel: string;
+  isMine: boolean;
+};
+
+export type WaveDetail = WavePost & {
+  reactionSummary: WaveReactionSummary[];
+  viewerReactionTypes: WaveReactionType[];
+  comments: WaveComment[];
 };
 
 export type RestModeSetting = {

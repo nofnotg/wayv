@@ -12,6 +12,7 @@ export async function GET() {
 
   const seedProfile = await getStoredSeedProfile(viewer.userId);
   const feed = await buildHomeFeed({
+    viewerId: viewer.userId,
     seedProfile,
     restMode: viewer.restMode
   });

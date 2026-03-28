@@ -61,6 +61,7 @@ export default async function HomePage() {
 
   const seedProfile = await getStoredSeedProfile(viewer.userId);
   const feed = await buildHomeFeed({
+    viewerId: viewer.userId,
     seedProfile,
     restMode: viewer.restMode
   });
@@ -102,6 +103,15 @@ export default async function HomePage() {
         <div className="grid gap-4 md:grid-cols-2">
           {feed.lanes.for_you.length ? (
             feed.lanes.for_you.map((post) => <WaveCard key={post.id} post={post} />)
+          ) : feed.meta.forYouSuppressed ? (
+            <div className="rounded-[1.5rem] border border-cyan-100 bg-cyan-50/80 px-5 py-4 md:col-span-2">
+              <p className="text-sm font-medium text-cyan-950">
+                {systemCopy.home.forYouRestingTitle}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-cyan-900">
+                {systemCopy.home.forYouRestingDescription}
+              </p>
+            </div>
           ) : (
             <p className="text-sm text-slate-600">아직 닿아온 파도가 없어요. 첫 파도를 남겨 보세요.</p>
           )}

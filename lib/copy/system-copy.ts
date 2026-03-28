@@ -19,6 +19,8 @@ export const systemCopy = {
     forYouTitle: "나에게 닿은 파도",
     quietTitle: "조용히 이어지는 파도",
     rekindledTitle: "다시 일렁이는 파도",
+    forYouRestingTitle: "해변에서 쉬는 동안엔 나에게 닿는 파도를 잠시 줄여 둘게요.",
+    forYouRestingDescription: "고요를 고른 동안에는 먼저 닿는 흐름을 잠시 접어 둘 수 있어요.",
     restModeBanner: "오늘은 파도에서 벗어나 해변에서 쉬고 있어요.",
     onboardingPrompt: "먼저 몇 가지 질문으로 지금의 흐름과 닮은 파도를 맞춰 볼까요?",
     loggedOutTitle: "말하지 못한 경험도 안전하게 둘 수 있어요",
@@ -55,10 +57,23 @@ export const systemCopy = {
     submit: "파도 남기기"
   },
   reactions: {
-    touched: "닿았어요",
-    ive_been_there: "나도 그랬어요",
-    add_wave: "파도를 보탤게요",
-    stay_quiet: "조용히 머물게요"
+    title: "이 파도에 어떤 방식으로 머물고 싶은가요?",
+    description: "숫자 대신, 닿는 방식만 조용히 남겨 둘게요.",
+    touched_me: "닿았어요",
+    me_too: "나도 그랬어요",
+    add_my_wave: "내 파도도 보탤게요",
+    stay_quietly: "조용히 머물게요",
+    signInPrompt: "반응을 남기려면 먼저 로그인해 주세요.",
+    saved: "이 방식으로 마음을 남겨 두었어요."
+  },
+  comments: {
+    title: "조용히 이어지는 말",
+    description: "짧게 남긴 말도 다음 파도에 오래 남을 수 있어요.",
+    empty: "아직 남겨진 말이 없어요. 첫 번째 짧은 파장을 남겨 볼 수 있어요.",
+    placeholder: "지금 닿은 마음을 짧게 남겨도 괜찮아요.",
+    submit: "짧은 말 남기기",
+    saving: "말을 남기는 중이에요...",
+    signInPrompt: "짧은 말을 남기려면 먼저 로그인해 주세요."
   },
   notifications: {
     quietDigest: "오늘은 여러 흐름이 잔잔하게 이어지고 있어요.",
