@@ -120,14 +120,35 @@ export async function listModerationReports(limit = 50): Promise<ModerationRepor
   );
 }
 
-export async function listModerationAuditLogs(limit = 50): Promise<ModerationAuditLog[]> {
+export async function listModerationAuditLogs(
+  limit = 50,
+  filters?: {
+    targetType?: ModerationAuditLog["targetType"];
+    nextStatus?: ModerationStatus;
+    actorLabel?: string;
+  }
+): Promise<ModerationAuditLog[]> {
   const supabase = createAdminSupabaseClient();
   const safeLimit = Math.max(1, Math.min(limit, 100));
-  const { data, error } = await supabase
+  let query = supabase
     .from("moderation_audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(safeLimit);
+
+  if (filters?.targetType) {
+    query = query.eq("target_type", filters.targetType);
+  }
+
+  if (filters?.nextStatus) {
+    query = query.eq("next_status", filters.nextStatus);
+  }
+
+  if (filters?.actorLabel) {
+    query = query.eq("actor_label", filters.actorLabel);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);

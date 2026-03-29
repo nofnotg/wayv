@@ -40,6 +40,11 @@ export function NotificationInbox({
   const [pending, startTransition] = useTransition();
 
   const groupedEvents = useMemo(() => groupByLane(events), [events]);
+  const unreadLaneEntries = useMemo(
+    () =>
+      Object.entries(summary.unreadByLane ?? {}).filter((entry) => Number(entry[1] ?? 0) > 0),
+    [summary]
+  );
 
   const updateEvent = (nextEvent: NotificationEvent) => {
     setEvents((current) =>
@@ -107,6 +112,17 @@ export function NotificationInbox({
             <span className="text-xs text-slate-500">{formatDateTime(summary.latestUnreadAt)}</span>
           ) : null}
         </div>
+        {unreadLaneEntries.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {unreadLaneEntries.map(([lane, count]) => (
+              <StatusChip
+                key={lane}
+                label={`${systemCopy.notifications.laneLabels[lane as keyof typeof systemCopy.notifications.laneLabels]} ${count}${systemCopy.notifications.unreadSuffix}`}
+                tone="quiet"
+              />
+            ))}
+          </div>
+        ) : null}
       </SectionCard>
 
       {message ? (

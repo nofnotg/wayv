@@ -310,6 +310,7 @@ export type NotificationEvent = {
   suppressionReason?: NotificationSuppressionReason | null;
   dedupeKey?: string | null;
   createdAt: string;
+  sentAt?: string | null;
   readAt?: string | null;
 };
 
@@ -317,7 +318,10 @@ export type NotificationInboxSummary = {
   unreadCount: number;
   hasUnread: boolean;
   latestUnreadAt: string | null;
+  unreadByLane: Partial<Record<NotificationCandidateLane, number>>;
 };
+
+export type NotificationLifecycleAction = "read" | "dismiss" | "mark_sent";
 
 export type NotificationDevice = {
   id: string;

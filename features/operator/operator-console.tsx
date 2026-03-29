@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
@@ -20,6 +20,13 @@ type OperatorConsoleProps = {
 
 const statusOptions: ModerationStatus[] = ["active", "under_review", "limited", "removed"];
 
+function groupAuditsByTargetType(audits: ModerationAuditLog[]) {
+  return {
+    post: audits.filter((audit) => audit.targetType === "post"),
+    comment: audits.filter((audit) => audit.targetType === "comment")
+  };
+}
+
 export function OperatorConsole({
   initialReports,
   initialAudits,
@@ -34,6 +41,8 @@ export function OperatorConsole({
   );
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const groupedAudits = useMemo(() => groupAuditsByTargetType(audits), [audits]);
 
   const updateReportStatus = (
     targetType: "post" | "comment",
@@ -63,7 +72,6 @@ export function OperatorConsole({
 
       const data = await response.json();
       const moderation = data.moderation as {
-        id: string;
         previousStatus: ModerationStatus;
         status: ModerationStatus;
       };
@@ -76,7 +84,7 @@ export function OperatorConsole({
         )
       );
 
-      if (moderation.previousStatus && moderation.previousStatus !== moderation.status) {
+      if (moderation.previousStatus !== moderation.status) {
         setAudits((current) => [
           {
             id: `local-${targetType}-${targetId}-${Date.now()}`,
@@ -205,46 +213,66 @@ export function OperatorConsole({
         {!audits.length ? (
           <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.auditEmpty}</p>
         ) : (
-          <div className="grid gap-4">
-            {audits.map((audit) => (
-              <article
-                key={audit.id}
-                className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusChip
-                    label={
-                      audit.targetType === "post"
-                        ? systemCopy.operator.labels.postReport
-                        : systemCopy.operator.labels.commentReport
-                    }
-                    tone="quiet"
-                  />
-                  <span className="text-xs text-slate-500">{formatDateTime(audit.createdAt)}</span>
+          <div className="grid gap-6">
+            {(["post", "comment"] as const).map((targetType) => {
+              const items = groupedAudits[targetType];
+              if (!items.length) {
+                return null;
+              }
+
+              return (
+                <div key={targetType} className="grid gap-3">
+                  <div className="flex items-center gap-2">
+                    <StatusChip
+                      label={
+                        targetType === "post"
+                          ? systemCopy.operator.labels.postReport
+                          : systemCopy.operator.labels.commentReport
+                      }
+                      tone="quiet"
+                    />
+                    <span className="text-xs text-slate-500">{items.length}</span>
+                  </div>
+                  <div className="grid gap-3">
+                    {items.map((audit) => (
+                      <article
+                        key={audit.id}
+                        className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusChip
+                            label={systemCopy.operator.statusLabels[audit.previousStatus]}
+                            tone="quiet"
+                          />
+                          <span className="text-slate-400">→</span>
+                          <StatusChip
+                            label={systemCopy.operator.statusLabels[audit.nextStatus]}
+                            tone={audit.nextStatus === "removed" ? "active" : "quiet"}
+                          />
+                          <span className="text-xs text-slate-500">
+                            {formatDateTime(audit.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                          <p>
+                            <span className="font-medium text-slate-900">
+                              {systemCopy.operator.labels.target}
+                            </span>{" "}
+                            {audit.targetType} / {audit.targetId}
+                          </p>
+                          <p>
+                            <span className="font-medium text-slate-900">
+                              {systemCopy.operator.labels.actor}
+                            </span>{" "}
+                            {audit.actorLabel}
+                          </p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
                 </div>
-                <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                  <p>
-                    <span className="font-medium text-slate-900">
-                      {systemCopy.operator.labels.target}
-                    </span>{" "}
-                    {audit.targetType} / {audit.targetId}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">
-                      {systemCopy.operator.labels.transition}
-                    </span>{" "}
-                    {systemCopy.operator.statusLabels[audit.previousStatus]} →{" "}
-                    {systemCopy.operator.statusLabels[audit.nextStatus]}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">
-                      {systemCopy.operator.labels.actor}
-                    </span>{" "}
-                    {audit.actorLabel}
-                  </p>
-                </div>
-              </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </SectionCard>

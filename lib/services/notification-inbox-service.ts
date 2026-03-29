@@ -6,8 +6,13 @@ import type {
   NotificationInboxSummary
 } from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  inboxVisibleNotificationStates,
+  unreadNotificationStates,
+  resolveNotificationEventState,
+  summarizeUnreadNotificationLanes
+} from "@/lib/services/notification-lifecycle-service";
 
-type InboxAction = "read" | "dismiss";
 type EventRow = {
   id: string;
   user_id: string;
@@ -21,18 +26,9 @@ type EventRow = {
   suppression_reason: NotificationEvent["suppressionReason"];
   dedupe_key: string | null;
   created_at: string;
+  sent_at: string | null;
   read_at: string | null;
 };
-
-const visibleInboxStates: NotificationEventState[] = [
-  "pending",
-  "operational_only",
-  "sent",
-  "read",
-  "dismissed"
-];
-
-const unreadInboxStates: NotificationEventState[] = ["pending", "operational_only", "sent"];
 
 function mapEventRow(row: EventRow): NotificationEvent {
   return {
@@ -48,48 +44,9 @@ function mapEventRow(row: EventRow): NotificationEvent {
     suppressionReason: row.suppression_reason,
     dedupeKey: row.dedupe_key,
     createdAt: String(row.created_at),
+    sentAt: row.sent_at,
     readAt: row.read_at
   };
-}
-
-export function resolveNotificationEventState(
-  currentState: NotificationEventState,
-  action: InboxAction
-): NotificationEventState {
-  if (action === "read") {
-    if (currentState === "dismissed") {
-      return "dismissed";
-    }
-
-    if (currentState === "read") {
-      return "read";
-    }
-
-    if (
-      currentState === "pending" ||
-      currentState === "operational_only" ||
-      currentState === "sent"
-    ) {
-      return "read";
-    }
-  }
-
-  if (action === "dismiss") {
-    if (currentState === "dismissed") {
-      return "dismissed";
-    }
-
-    if (
-      currentState === "pending" ||
-      currentState === "operational_only" ||
-      currentState === "sent" ||
-      currentState === "read"
-    ) {
-      return "dismissed";
-    }
-  }
-
-  return currentState;
 }
 
 export async function listNotificationInboxEvents(userId: string, limit = 50) {
@@ -98,7 +55,7 @@ export async function listNotificationInboxEvents(userId: string, limit = 50) {
     .from("notification_events")
     .select("*")
     .eq("user_id", userId)
-    .in("state", visibleInboxStates)
+    .in("state", inboxVisibleNotificationStates)
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
 
@@ -111,45 +68,50 @@ export async function listNotificationInboxEvents(userId: string, limit = 50) {
 
 export async function getNotificationInboxSummary(userId: string): Promise<NotificationInboxSummary> {
   const supabase = await createServerSupabaseClient();
-  const unreadQuery = supabase
+  const countQuery = supabase
     .from("notification_events")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .in("state", unreadInboxStates)
+    .in("state", unreadNotificationStates)
     .is("read_at", null);
 
-  const latestQuery = supabase
+  const unreadRowsQuery = supabase
     .from("notification_events")
-    .select("created_at")
+    .select("lane, created_at, state, read_at")
     .eq("user_id", userId)
-    .in("state", unreadInboxStates)
+    .in("state", unreadNotificationStates)
     .is("read_at", null)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(100);
 
-  const [{ count, error: countError }, { data: latest, error: latestError }] = await Promise.all([
-    unreadQuery,
-    latestQuery
+  const [{ count, error: countError }, { data: unreadRows, error: unreadError }] = await Promise.all([
+    countQuery,
+    unreadRowsQuery
   ]);
 
   if (countError) {
     throw new Error(countError.message);
   }
 
-  if (latestError) {
-    throw new Error(latestError.message);
+  if (unreadError) {
+    throw new Error(unreadError.message);
   }
 
+  const unreadEvents = (unreadRows ?? []).map((row) => ({
+    lane: (row.lane as NotificationEvent["lane"]) ?? "quiet_digest",
+    state: row.state as NotificationEvent["state"],
+    readAt: (row.read_at as string | null) ?? null
+  }));
   const unreadCount = Number(count ?? 0);
   return {
     unreadCount,
     hasUnread: unreadCount > 0,
-    latestUnreadAt: latest?.created_at ?? null
+    latestUnreadAt: unreadRows?.[0]?.created_at ?? null,
+    unreadByLane: summarizeUnreadNotificationLanes(unreadEvents)
   };
 }
 
-async function mutateNotificationEventState(eventId: string, userId: string, action: InboxAction) {
+async function mutateNotificationEventState(eventId: string, userId: string, action: "read" | "dismiss") {
   const supabase = await createServerSupabaseClient();
   const { data: current, error: readError } = await supabase
     .from("notification_events")

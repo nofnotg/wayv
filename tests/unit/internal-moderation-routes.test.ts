@@ -55,14 +55,18 @@ describe("internal moderation routes", () => {
     expect(unauthorized.status).toBe(403);
 
     const authorized = await GET(
-      new Request("http://localhost/api/internal/debug/moderation-audits?limit=5", {
+      new Request("http://localhost/api/internal/debug/moderation-audits?limit=5&targetType=post&nextStatus=removed&actorLabel=operator-console", {
         headers: {
           "x-cron-secret": "test-secret"
         }
       }) as never
     );
 
-    expect(listModerationAuditLogs).toHaveBeenCalledWith(5);
+    expect(listModerationAuditLogs).toHaveBeenCalledWith(5, {
+      targetType: "post",
+      nextStatus: "removed",
+      actorLabel: "operator-console"
+    });
     expect(authorized.status).toBe(200);
   });
 

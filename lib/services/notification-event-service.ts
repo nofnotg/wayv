@@ -31,6 +31,7 @@ type EventRow = {
   suppression_reason: NotificationSuppressionReason | null;
   dedupe_key: string | null;
   created_at: string;
+  sent_at: string | null;
   read_at: string | null;
 };
 
@@ -185,6 +186,7 @@ function mapEventRow(row: EventRow): NotificationEvent {
     suppressionReason: row.suppression_reason,
     dedupeKey: row.dedupe_key,
     createdAt: String(row.created_at),
+    sentAt: row.sent_at,
     readAt: row.read_at
   };
 }
