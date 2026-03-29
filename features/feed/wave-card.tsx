@@ -27,7 +27,7 @@ export function WaveCard({ post }: WaveCardProps) {
         ))}
       </div>
       <h3 className="font-serif text-2xl text-slate-950">
-        {post.title ?? "제목 없이 남긴 파도"}
+        {post.title ?? systemCopy.wave.untitled}
       </h3>
       <p className="mt-2 line-clamp-4 text-sm leading-6 text-slate-700">{post.body}</p>
       <p className="mt-4 text-xs text-slate-500">{formatDateTime(post.createdAt)}</p>

@@ -26,12 +26,12 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       <SectionCard>
         {status === "saved" ? (
           <p className="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
-            프로필을 저장했어요.
+            {systemCopy.profile.saved}
           </p>
         ) : null}
         {error ? (
           <p className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            입력값을 다시 확인해 주세요.
+            {systemCopy.profile.error}
           </p>
         ) : null}
         <ProfileForm profile={viewer.profile} />

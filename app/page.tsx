@@ -26,11 +26,11 @@ export default async function HomePage() {
               href="/auth/sign-in"
               className="rounded-full bg-slate-900 px-5 py-3 text-sm text-white"
             >
-              로그인하고 둘러보기
+              {systemCopy.home.startLink}
             </Link>
-            <StatusChip label="숫자 없는 공명" tone="quiet" />
-            <StatusChip label="휴식 모드 지원" tone="quiet" />
-            <StatusChip label="모바일 연동 준비" tone="quiet" />
+            <StatusChip label={systemCopy.home.statusChips.resonance} tone="quiet" />
+            <StatusChip label={systemCopy.home.statusChips.restMode} tone="quiet" />
+            <StatusChip label={systemCopy.home.statusChips.mobileReady} tone="quiet" />
           </div>
         </SectionCard>
       </div>
@@ -46,13 +46,13 @@ export default async function HomePage() {
         />
         <SectionCard>
           <p className="text-sm leading-7 text-slate-700">
-            몇 가지 짧은 질문으로 지금의 흐름과 닮은 파도를 먼저 맞춰 볼게요.
+            {systemCopy.home.onboardingCardDescription}
           </p>
           <Link
             href="/onboarding"
             className="mt-6 inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm text-white"
           >
-            온보딩 시작하기
+            {systemCopy.home.onboardingCta}
           </Link>
         </SectionCard>
       </div>
@@ -70,19 +70,20 @@ export default async function HomePage() {
     <div className="grid gap-6">
       <PageHeader
         title={`안녕하세요, ${viewer.profile.nickname}`}
-        description="오늘의 흐름과 나에게 닿는 파도를 잔잔하게 살펴볼 수 있어요."
+        description="오늘의 흐름과 나에게 닿는 파도를 조용히 살펴보고 있어요."
       />
 
       {viewer.restMode?.enabled ? (
         <SectionCard className="border-cyan-100 bg-cyan-50/80">
           <p className="text-sm font-medium text-cyan-950">{systemCopy.home.restModeBanner}</p>
-          <p className="mt-2 text-sm text-cyan-900">
-            쉬는 동안에는 추천과 알림을 더 조용하게 둘게요. 작성과 읽기는 그대로 할 수 있어요.
-          </p>
+          <p className="mt-2 text-sm text-cyan-900">{systemCopy.home.restModeDescription}</p>
         </SectionCard>
       ) : null}
 
-      <SectionCard title={systemCopy.home.weatherTitle} description="개별 인기 대신 전체 흐름의 상태만 보여 드려요.">
+      <SectionCard
+        title={systemCopy.home.weatherTitle}
+        description={systemCopy.home.weatherDescription}
+      >
         <div className="grid gap-3">
           {feed.weather.map((weather) => (
             <div
@@ -99,7 +100,10 @@ export default async function HomePage() {
         </div>
       </SectionCard>
 
-      <SectionCard title={systemCopy.home.forYouTitle} description="온보딩과 최근 흐름을 바탕으로 먼저 닿는 파도예요.">
+      <SectionCard
+        title={systemCopy.home.forYouTitle}
+        description={systemCopy.home.forYouDescription}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           {feed.lanes.for_you.length ? (
             feed.lanes.for_you.map((post) => <WaveCard key={post.id} post={post} />)
@@ -113,27 +117,33 @@ export default async function HomePage() {
               </p>
             </div>
           ) : (
-            <p className="text-sm text-slate-600">아직 닿아온 파도가 없어요. 첫 파도를 남겨 보세요.</p>
+            <p className="text-sm text-slate-600">{systemCopy.home.emptyForYou}</p>
           )}
         </div>
       </SectionCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title={systemCopy.home.quietTitle}>
+        <SectionCard
+          title={systemCopy.home.quietTitle}
+          description={systemCopy.home.quietDescription}
+        >
           <div className="grid gap-4">
             {feed.lanes.quiet.length ? (
               feed.lanes.quiet.map((post) => <WaveCard key={post.id} post={post} />)
             ) : (
-              <p className="text-sm text-slate-600">지금은 조용히 이어지는 파도가 조금 쉬고 있어요.</p>
+              <p className="text-sm text-slate-600">{systemCopy.home.emptyQuiet}</p>
             )}
           </div>
         </SectionCard>
-        <SectionCard title={systemCopy.home.rekindledTitle}>
+        <SectionCard
+          title={systemCopy.home.rekindledTitle}
+          description={systemCopy.home.rekindledDescription}
+        >
           <div className="grid gap-4">
             {feed.lanes.rekindled.length ? (
               feed.lanes.rekindled.map((post) => <WaveCard key={post.id} post={post} />)
             ) : (
-              <p className="text-sm text-slate-600">다시 일렁이는 흐름이 생기면 여기에서 만날 수 있어요.</p>
+              <p className="text-sm text-slate-600">{systemCopy.home.emptyRekindled}</p>
             )}
           </div>
         </SectionCard>
