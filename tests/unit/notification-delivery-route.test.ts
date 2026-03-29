@@ -82,4 +82,32 @@ describe("notification delivery debug route", () => {
     });
     expect(response.status).toBe(200);
   });
+
+  it("supports delivery scope inspection for claimed or retryable views", async () => {
+    listNotificationDeliveryEvents.mockResolvedValue([
+      { id: "event-3", state: "retryable", claimToken: "claim-1" }
+    ]);
+    const { GET } = await import(
+      "../../app/api/internal/debug/notification-delivery/route"
+    );
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/internal/debug/notification-delivery?scope=claimed&limit=6",
+        {
+          headers: {
+            "x-cron-secret": "test-secret"
+          }
+        }
+      ) as never
+    );
+
+    expect(listNotificationDeliveryEvents).toHaveBeenCalledWith({
+      limit: 6,
+      userId: undefined,
+      channel: undefined,
+      states: ["pending", "operational_only", "retryable", "sent", "failed"]
+    });
+    expect(response.status).toBe(200);
+  });
 });

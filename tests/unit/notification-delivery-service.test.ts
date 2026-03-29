@@ -347,8 +347,18 @@ describe("notification delivery service", () => {
     const { markNotificationBatchSent } = await import(
       "../../lib/services/notification-delivery-service"
     );
+    const claimed = state.notification_events.find(
+      (event) => event.id === "11111111-1111-4111-8111-111111111111"
+    );
+    if (claimed) {
+      claimed.claim_token = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+      claimed.claimed_at = "2026-03-29T10:00:00.000Z";
+      claimed.claim_expires_at = "2999-01-01T00:00:00.000Z";
+    }
+
     const updated = await markNotificationBatchSent({
-      eventIds: ["11111111-1111-4111-8111-111111111111"]
+      eventIds: ["11111111-1111-4111-8111-111111111111"],
+      claimToken: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     });
 
     expect(updated).toHaveLength(1);
@@ -363,9 +373,18 @@ describe("notification delivery service", () => {
     const { markNotificationBatchFailed, markNotificationBatchRetryable } = await import(
       "../../lib/services/notification-delivery-service"
     );
+    const failedClaim = state.notification_events.find(
+      (event) => event.id === "33333333-3333-4333-8333-333333333333"
+    );
+    if (failedClaim) {
+      failedClaim.claim_token = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+      failedClaim.claimed_at = "2026-03-29T10:00:00.000Z";
+      failedClaim.claim_expires_at = "2999-01-01T00:00:00.000Z";
+    }
 
     const failed = await markNotificationBatchFailed({
       eventIds: ["33333333-3333-4333-8333-333333333333"],
+      claimToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       lastError: "provider-timeout"
     });
 
@@ -375,8 +394,18 @@ describe("notification delivery service", () => {
       attemptCount: 2
     });
 
+    const retryClaim = state.notification_events.find(
+      (event) => event.id === "11111111-1111-4111-8111-111111111111"
+    );
+    if (retryClaim) {
+      retryClaim.claim_token = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+      retryClaim.claimed_at = "2026-03-29T10:10:00.000Z";
+      retryClaim.claim_expires_at = "2999-01-01T00:00:00.000Z";
+    }
+
     const retryable = await markNotificationBatchRetryable({
       eventIds: ["11111111-1111-4111-8111-111111111111"],
+      claimToken: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
       retryAfterMinutes: 30,
       lastError: "push-window-closed"
     });
@@ -386,5 +415,40 @@ describe("notification delivery service", () => {
       lastError: "push-window-closed"
     });
     expect(retryable[0].nextRetryAt).toBeTruthy();
+  });
+
+  it("rejects missing, mismatched, or expired claim tokens", async () => {
+    const { markNotificationBatchSent, NotificationDeliveryClaimError } = await import(
+      "../../lib/services/notification-delivery-service"
+    );
+    const eventId = "11111111-1111-4111-8111-111111111111";
+    const claimed = state.notification_events.find((event) => event.id === eventId);
+    if (claimed) {
+      claimed.claim_token = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+      claimed.claimed_at = "2026-03-29T10:00:00.000Z";
+      claimed.claim_expires_at = "2999-01-01T00:00:00.000Z";
+    }
+
+    await expect(
+      markNotificationBatchSent({
+        eventIds: [eventId],
+        claimToken: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+      })
+    ).rejects.toMatchObject({
+      code: "claim_mismatch"
+    } satisfies Partial<InstanceType<typeof NotificationDeliveryClaimError>>);
+
+    if (claimed) {
+      claimed.claim_expires_at = "2020-01-01T00:00:00.000Z";
+    }
+
+    await expect(
+      markNotificationBatchSent({
+        eventIds: [eventId],
+        claimToken: "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+      })
+    ).rejects.toMatchObject({
+      code: "claim_expired"
+    } satisfies Partial<InstanceType<typeof NotificationDeliveryClaimError>>);
   });
 });

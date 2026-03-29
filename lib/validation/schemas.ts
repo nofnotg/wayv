@@ -110,7 +110,7 @@ export const notificationDeliveryClaimSchema = z.object({
 
 export const notificationDeliveryOutcomeSchema = z.object({
   eventIds: z.array(z.string().uuid()).min(1).max(100),
-  claimToken: z.string().uuid().optional(),
+  claimToken: z.string().uuid(),
   outcome: z.enum(["sent", "failed", "retryable"]),
   retryAfterMinutes: z.number().int().min(1).max(1440).optional(),
   lastError: z.string().trim().max(500).optional()

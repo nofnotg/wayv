@@ -11,6 +11,10 @@ import type {
   ModerationStatus,
   NotificationEvent
 } from "@/lib/domain/types";
+import {
+  buildNotificationDeliveryAnalytics,
+  filterNotificationDeliveryEventsByScope
+} from "@/lib/services/notification-delivery-analytics-service";
 import { formatDateTime } from "@/lib/utils";
 
 type OperatorConsoleProps = {
@@ -26,19 +30,6 @@ function groupAuditsByTargetType(audits: ModerationAuditLog[]) {
   return {
     post: audits.filter((audit) => audit.targetType === "post"),
     comment: audits.filter((audit) => audit.targetType === "comment")
-  };
-}
-
-function groupDeliveryEvents(events: NotificationEvent[]) {
-  return {
-    ready: events.filter(
-      (event) =>
-        event.state === "pending" ||
-        event.state === "operational_only" ||
-        event.state === "retryable"
-    ),
-    sent: events.filter((event) => event.state === "sent"),
-    failed: events.filter((event) => event.state === "failed")
   };
 }
 
@@ -70,7 +61,6 @@ export function OperatorConsole({
 }: OperatorConsoleProps) {
   const [reports, setReports] = useState(initialReports);
   const [audits, setAudits] = useState(initialAudits);
-  const [deliveryEvents] = useState(initialDeliveryEvents);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
     Object.fromEntries(
       initialReports.map((report) => [report.id, report.targetStatus ?? "under_review"])
@@ -80,7 +70,48 @@ export function OperatorConsole({
   const [pending, startTransition] = useTransition();
 
   const groupedAudits = useMemo(() => groupAuditsByTargetType(audits), [audits]);
-  const groupedDelivery = useMemo(() => groupDeliveryEvents(deliveryEvents), [deliveryEvents]);
+  const deliveryAnalytics = useMemo(
+    () => buildNotificationDeliveryAnalytics(initialDeliveryEvents),
+    [initialDeliveryEvents]
+  );
+  const deliveryGroups = useMemo(
+    () => [
+      {
+        key: "ready",
+        title: "아직 보내지 않은 준비 이벤트",
+        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "ready")
+      },
+      {
+        key: "claimed",
+        title: "지금 누군가 잡고 있는 배치",
+        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "claimed")
+      },
+      {
+        key: "expired",
+        title: "다시 살펴볼 만료된 클레임",
+        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "expired_claims")
+      },
+      {
+        key: "retryable",
+        title: "다시 시도 대기",
+        items: filterNotificationDeliveryEventsByScope(
+          initialDeliveryEvents,
+          "retryable_backlog"
+        )
+      },
+      {
+        key: "failed",
+        title: "최근 실패",
+        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "failed")
+      },
+      {
+        key: "sent",
+        title: "최근 전달됨",
+        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "sent")
+      }
+    ],
+    [initialDeliveryEvents]
+  );
 
   const updateReportStatus = (
     targetType: "post" | "comment",
@@ -315,16 +346,37 @@ export function OperatorConsole({
         )}
       </SectionCard>
 
+      <SectionCard title="전달 실행 흐름">
+        <div className="flex flex-wrap gap-2">
+          <StatusChip label={`준비 ${deliveryAnalytics.readyCount}`} tone="quiet" />
+          <StatusChip label={`클레임 ${deliveryAnalytics.claimedCount}`} tone="quiet" />
+          <StatusChip label={`만료 ${deliveryAnalytics.expiredClaimCount}`} tone="quiet" />
+          <StatusChip label={`재시도 ${deliveryAnalytics.retryableCount}`} tone="quiet" />
+          <StatusChip label={`실패 ${deliveryAnalytics.failedCount}`} tone="quiet" />
+          <StatusChip label={`전달됨 ${deliveryAnalytics.sentCount}`} tone="quiet" />
+        </div>
+        <div className="mt-4 grid gap-2 text-sm text-slate-700">
+          <p>
+            <span className="font-medium text-slate-900">최근 시도</span>{" "}
+            {deliveryAnalytics.latestAttemptAt
+              ? formatDateTime(deliveryAnalytics.latestAttemptAt)
+              : "아직 없습니다."}
+          </p>
+          <p>
+            <span className="font-medium text-slate-900">평균 시도 횟수</span>{" "}
+            {deliveryAnalytics.averageAttemptCount}
+          </p>
+        </div>
+      </SectionCard>
+
       <SectionCard title="전달 준비와 결과">
-        {!deliveryEvents.length ? (
-          <p className="text-sm leading-7 text-slate-600">아직 살펴볼 전달 이벤트가 없습니다.</p>
+        {!initialDeliveryEvents.length ? (
+          <p className="text-sm leading-7 text-slate-600">
+            아직 살펴볼 전달 이벤트가 없습니다.
+          </p>
         ) : (
           <div className="grid gap-5">
-            {[
-              { key: "ready", title: "전달 준비", items: groupedDelivery.ready },
-              { key: "sent", title: "최근 전달됨", items: groupedDelivery.sent },
-              { key: "failed", title: "다시 살펴볼 전달", items: groupedDelivery.failed }
-            ].map((group) =>
+            {deliveryGroups.map((group) =>
               group.items.length ? (
                 <div key={group.key} className="grid gap-3">
                   <div className="flex items-center gap-2">
@@ -351,6 +403,13 @@ export function OperatorConsole({
                             <span className="font-medium text-slate-900">대상</span>{" "}
                             {event.userId}
                             {event.postId ? ` / ${event.postId}` : ""}
+                          </p>
+                          <p>
+                            <span className="font-medium text-slate-900">클레임</span>{" "}
+                            {event.claimToken ? "있음" : "없음"}
+                            {event.claimExpiresAt
+                              ? ` / ${formatDateTime(event.claimExpiresAt)}`
+                              : ""}
                           </p>
                           <p>
                             <span className="font-medium text-slate-900">시도</span>{" "}

@@ -43,7 +43,20 @@ describe("notification delivery worker routes", () => {
       claimToken: "claim-1",
       claimedAt: "2026-03-29T10:00:00.000Z",
       claimExpiresAt: "2026-03-29T10:10:00.000Z",
-      events: [{ id: "event-1" }]
+      events: [
+        {
+          id: "event-1",
+          userId: "viewer-1",
+          type: "for_you_wave",
+          channel: "inapp",
+          lane: "for_you",
+          postId: "post-1",
+          title: "지금 닿을 만한 파도",
+          body: "조용히 이어지는 결이 있어요.",
+          state: "pending",
+          createdAt: "2026-03-29T09:00:00.000Z"
+        }
+      ]
     });
     const { POST } = await import("../../app/api/internal/delivery/batch/route");
 
@@ -119,5 +132,26 @@ describe("notification delivery worker routes", () => {
       eventIds: ["33333333-3333-4333-8333-333333333333"]
     });
     expect(retryResponse.status).toBe(200);
+  });
+
+  it("rejects outcome requests that omit the claim token", async () => {
+    const { POST } = await import("../../app/api/internal/delivery/outcomes/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/internal/delivery/outcomes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cron-secret": "test-secret"
+        },
+        body: JSON.stringify({
+          outcome: "sent",
+          eventIds: ["22222222-2222-4222-8222-222222222222"]
+        })
+      }) as never
+    );
+
+    expect(response.status).toBe(400);
+    expect(markNotificationBatchSent).not.toHaveBeenCalled();
   });
 });

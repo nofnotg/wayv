@@ -77,6 +77,21 @@ function sanitizeRetryAfterMinutes(value?: number) {
   return Math.max(1, Math.min(value ?? 15, 24 * 60));
 }
 
+export class NotificationDeliveryClaimError extends Error {
+  constructor(
+    public code:
+      | "claim_token_required"
+      | "claim_mismatch"
+      | "claim_expired"
+      | "not_claimed"
+      | "not_deliverable"
+      | "event_not_found"
+  ) {
+    super(code);
+    this.name = "NotificationDeliveryClaimError";
+  }
+}
+
 export async function listNotificationDeliveryEvents(input?: {
   limit?: number;
   userId?: string;
@@ -212,7 +227,7 @@ export async function claimDeliverableNotificationBatch(input?: {
 
 async function updateDeliveryOutcome(input: {
   eventIds: string[];
-  claimToken?: string;
+  claimToken: string;
   outcome: NotificationDeliveryOutcome;
   retryAfterMinutes?: number;
   lastError?: string;
@@ -220,6 +235,10 @@ async function updateDeliveryOutcome(input: {
   const uniqueIds = [...new Set(input.eventIds.filter(Boolean))];
   if (!uniqueIds.length) {
     return [];
+  }
+
+  if (!input.claimToken) {
+    throw new NotificationDeliveryClaimError("claim_token_required");
   }
 
   const supabase = createAdminSupabaseClient();
@@ -235,24 +254,37 @@ async function updateDeliveryOutcome(input: {
   const retryAfterMinutes = sanitizeRetryAfterMinutes(input.retryAfterMinutes);
   const now = new Date();
   const nowIso = now.toISOString();
+  const rows = (current ?? []).map((row) => row as EventRow);
 
-  const eligible = (current ?? [])
-    .map((row) => row as EventRow)
-    .filter((row) => {
-      if (input.claimToken && row.claim_token !== input.claimToken) {
-        return false;
-      }
+  if (rows.length !== uniqueIds.length) {
+    throw new NotificationDeliveryClaimError("event_not_found");
+  }
 
-      return (
-        row.state === "pending" ||
-        row.state === "operational_only" ||
-        row.state === "retryable"
-      );
-    });
+  for (const row of rows) {
+    if (!row.claim_token) {
+      throw new NotificationDeliveryClaimError("not_claimed");
+    }
+
+    if (row.claim_token !== input.claimToken) {
+      throw new NotificationDeliveryClaimError("claim_mismatch");
+    }
+
+    if (!row.claim_expires_at || new Date(row.claim_expires_at).getTime() <= now.getTime()) {
+      throw new NotificationDeliveryClaimError("claim_expired");
+    }
+
+    if (
+      row.state !== "pending" &&
+      row.state !== "operational_only" &&
+      row.state !== "retryable"
+    ) {
+      throw new NotificationDeliveryClaimError("not_deliverable");
+    }
+  }
 
   const updated: NotificationEvent[] = [];
 
-  for (const row of eligible) {
+  for (const row of rows) {
     const nextState =
       input.outcome === "sent"
         ? resolveNotificationEventState(row.state, "mark_sent")
@@ -300,7 +332,7 @@ async function updateDeliveryOutcome(input: {
 
 export async function markNotificationBatchSent(input: {
   eventIds: string[];
-  claimToken?: string;
+  claimToken: string;
 }) {
   return updateDeliveryOutcome({
     eventIds: input.eventIds,
@@ -311,7 +343,7 @@ export async function markNotificationBatchSent(input: {
 
 export async function markNotificationBatchFailed(input: {
   eventIds: string[];
-  claimToken?: string;
+  claimToken: string;
   lastError?: string;
 }) {
   return updateDeliveryOutcome({
@@ -324,7 +356,7 @@ export async function markNotificationBatchFailed(input: {
 
 export async function markNotificationBatchRetryable(input: {
   eventIds: string[];
-  claimToken?: string;
+  claimToken: string;
   retryAfterMinutes?: number;
   lastError?: string;
 }) {

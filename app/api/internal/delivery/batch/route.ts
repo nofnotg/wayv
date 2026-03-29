@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import { claimDeliverableNotificationBatch } from "@/lib/services/notification-delivery-service";
+import { prepareNotificationDeliveryBatchForSender } from "@/lib/services/notification-sender-adapter";
 import { notificationDeliveryClaimSchema } from "@/lib/validation/schemas";
 
 export async function POST(request: NextRequest) {
@@ -20,8 +21,10 @@ export async function POST(request: NextRequest) {
   }
 
   const batch = await claimDeliverableNotificationBatch(parsed.data);
+  const senderBatch = prepareNotificationDeliveryBatchForSender(batch);
   return NextResponse.json({
     ok: true,
-    batch
+    batch,
+    senderBatch
   });
 }

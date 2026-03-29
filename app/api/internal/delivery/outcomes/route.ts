@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  NotificationDeliveryClaimError,
   markNotificationBatchFailed,
   markNotificationBatchRetryable,
   markNotificationBatchSent
@@ -23,15 +24,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result =
-    parsed.data.outcome === "sent"
-      ? await markNotificationBatchSent(parsed.data)
-      : parsed.data.outcome === "failed"
-        ? await markNotificationBatchFailed(parsed.data)
-        : await markNotificationBatchRetryable(parsed.data);
+  try {
+    const result =
+      parsed.data.outcome === "sent"
+        ? await markNotificationBatchSent(parsed.data)
+        : parsed.data.outcome === "failed"
+          ? await markNotificationBatchFailed(parsed.data)
+          : await markNotificationBatchRetryable(parsed.data);
 
-  return NextResponse.json({
-    ok: true,
-    events: result
-  });
+    return NextResponse.json({
+      ok: true,
+      events: result
+    });
+  } catch (error) {
+    if (error instanceof NotificationDeliveryClaimError) {
+      return NextResponse.json(
+        { error: error.code },
+        { status: error.code === "claim_token_required" ? 400 : 409 }
+      );
+    }
+
+    throw error;
+  }
 }

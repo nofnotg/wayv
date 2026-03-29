@@ -423,3 +423,38 @@ export type NotificationDeliveryBatch = {
 };
 
 export type NotificationDeliveryOutcome = "sent" | "failed" | "retryable";
+
+export type NotificationDeliveryScope =
+  | "ready"
+  | "claimed"
+  | "expired_claims"
+  | "retryable_backlog"
+  | "sent"
+  | "failed";
+
+export type NotificationSenderPayload = {
+  eventId: string;
+  channel: NotificationChannel;
+  targetUserId: string;
+  title: string;
+  body: string;
+  postId: string | null;
+  lane: NotificationCandidateLane | null;
+  claimToken: string;
+};
+
+export type NotificationSenderBatchItem = {
+  event: NotificationEvent;
+  payload: NotificationSenderPayload;
+};
+
+export type NotificationDeliveryAnalytics = {
+  readyCount: number;
+  claimedCount: number;
+  expiredClaimCount: number;
+  sentCount: number;
+  failedCount: number;
+  retryableCount: number;
+  latestAttemptAt: string | null;
+  averageAttemptCount: number;
+};
