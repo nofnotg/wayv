@@ -8,13 +8,15 @@ import { systemCopy } from "@/lib/copy/system-copy";
 import type {
   ModerationAuditLog,
   ModerationReportListItem,
-  ModerationStatus
+  ModerationStatus,
+  NotificationEvent
 } from "@/lib/domain/types";
 import { formatDateTime } from "@/lib/utils";
 
 type OperatorConsoleProps = {
   initialReports: ModerationReportListItem[];
   initialAudits: ModerationAuditLog[];
+  initialDeliveryEvents: NotificationEvent[];
   token: string;
 };
 
@@ -27,13 +29,48 @@ function groupAuditsByTargetType(audits: ModerationAuditLog[]) {
   };
 }
 
+function groupDeliveryEvents(events: NotificationEvent[]) {
+  return {
+    ready: events.filter(
+      (event) =>
+        event.state === "pending" ||
+        event.state === "operational_only" ||
+        event.state === "retryable"
+    ),
+    sent: events.filter((event) => event.state === "sent"),
+    failed: events.filter((event) => event.state === "failed")
+  };
+}
+
+function getDeliveryLabel(event: NotificationEvent) {
+  if (event.state === "pending") {
+    return "전달 준비";
+  }
+
+  if (event.state === "operational_only") {
+    return "운영 안내";
+  }
+
+  if (event.state === "retryable") {
+    return "다시 시도 예정";
+  }
+
+  if (event.state === "failed") {
+    return "전달 보류";
+  }
+
+  return "전달됨";
+}
+
 export function OperatorConsole({
   initialReports,
   initialAudits,
+  initialDeliveryEvents,
   token
 }: OperatorConsoleProps) {
   const [reports, setReports] = useState(initialReports);
   const [audits, setAudits] = useState(initialAudits);
+  const [deliveryEvents] = useState(initialDeliveryEvents);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
     Object.fromEntries(
       initialReports.map((report) => [report.id, report.targetStatus ?? "under_review"])
@@ -43,6 +80,7 @@ export function OperatorConsole({
   const [pending, startTransition] = useTransition();
 
   const groupedAudits = useMemo(() => groupAuditsByTargetType(audits), [audits]);
+  const groupedDelivery = useMemo(() => groupDeliveryEvents(deliveryEvents), [deliveryEvents]);
 
   const updateReportStatus = (
     targetType: "post" | "comment",
@@ -273,6 +311,59 @@ export function OperatorConsole({
                 </div>
               );
             })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="전달 준비와 결과">
+        {!deliveryEvents.length ? (
+          <p className="text-sm leading-7 text-slate-600">아직 살펴볼 전달 이벤트가 없습니다.</p>
+        ) : (
+          <div className="grid gap-5">
+            {[
+              { key: "ready", title: "전달 준비", items: groupedDelivery.ready },
+              { key: "sent", title: "최근 전달됨", items: groupedDelivery.sent },
+              { key: "failed", title: "다시 살펴볼 전달", items: groupedDelivery.failed }
+            ].map((group) =>
+              group.items.length ? (
+                <div key={group.key} className="grid gap-3">
+                  <div className="flex items-center gap-2">
+                    <StatusChip label={group.title} tone="quiet" />
+                    <span className="text-xs text-slate-500">{group.items.length}</span>
+                  </div>
+                  <div className="grid gap-3">
+                    {group.items.map((event) => (
+                      <article
+                        key={event.id}
+                        className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusChip label={getDeliveryLabel(event)} tone="quiet" />
+                          {event.lane ? <StatusChip label={event.lane} tone="quiet" /> : null}
+                          <span className="text-xs text-slate-500">
+                            {formatDateTime(event.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                          <p className="font-medium text-slate-900">{event.title}</p>
+                          <p>{event.body}</p>
+                          <p>
+                            <span className="font-medium text-slate-900">대상</span>{" "}
+                            {event.userId}
+                            {event.postId ? ` / ${event.postId}` : ""}
+                          </p>
+                          <p>
+                            <span className="font-medium text-slate-900">시도</span>{" "}
+                            {event.attemptCount ?? 0}
+                            {event.lastError ? ` / ${event.lastError}` : ""}
+                          </p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null
+            )}
           </div>
         )}
       </SectionCard>

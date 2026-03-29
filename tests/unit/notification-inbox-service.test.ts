@@ -33,4 +33,17 @@ describe("notification lifecycle service", () => {
     expect(resolveNotificationEventState("operational_only", "mark_sent")).toBe("sent");
     expect(resolveNotificationEventState("read", "mark_sent")).toBe("read");
   });
+
+  it("supports failed and retryable delivery outcomes without affecting inbox rules", () => {
+    expect(resolveNotificationEventState("pending", "mark_failed")).toBe("failed");
+    expect(resolveNotificationEventState("failed", "mark_retryable")).toBe("retryable");
+    expect(isNotificationEventDeliverable({ state: "retryable", readAt: null, nextRetryAt: null })).toBe(true);
+    expect(
+      isNotificationEventDeliverable({
+        state: "retryable",
+        readAt: null,
+        nextRetryAt: "2999-01-01T00:00:00.000Z"
+      })
+    ).toBe(false);
+  });
 });

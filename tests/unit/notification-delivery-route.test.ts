@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const listDeliverableNotificationEvents = vi.fn();
+const listNotificationDeliveryEvents = vi.fn();
 
 vi.mock("@/lib/services/notification-delivery-service", () => ({
-  listDeliverableNotificationEvents
+  listDeliverableNotificationEvents,
+  listNotificationDeliveryEvents
 }));
 
 describe("notification delivery debug route", () => {
@@ -51,6 +53,32 @@ describe("notification delivery debug route", () => {
       limit: 12,
       userId: "viewer-1",
       channel: "inapp"
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it("supports state-based delivery inspection for operators", async () => {
+    listNotificationDeliveryEvents.mockResolvedValue([{ id: "event-2", state: "failed" }]);
+    const { GET } = await import(
+      "../../app/api/internal/debug/notification-delivery/route"
+    );
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/internal/debug/notification-delivery?state=failed&state=sent&limit=8",
+        {
+          headers: {
+            "x-cron-secret": "test-secret"
+          }
+        }
+      ) as never
+    );
+
+    expect(listNotificationDeliveryEvents).toHaveBeenCalledWith({
+      limit: 8,
+      userId: undefined,
+      channel: undefined,
+      states: ["failed", "sent"]
     });
     expect(response.status).toBe(200);
   });

@@ -5,6 +5,7 @@ import {
   moderationStatusValues,
   moderationReportReasonValues,
   notificationDigestModeValues,
+  notificationEventStateValues,
   notificationPlatformValues,
   profileVisibilityValues,
   waveReactionTypeValues,
@@ -99,3 +100,22 @@ export const notificationDeviceSchema = z.object({
   deviceLabel: z.string().trim().max(80).nullable().optional(),
   isActive: z.boolean().default(true)
 });
+
+export const notificationDeliveryClaimSchema = z.object({
+  limit: z.number().int().min(1).max(100).optional(),
+  userId: z.string().uuid().optional(),
+  channel: z.enum(["inapp", "email", "push"]).optional(),
+  claimTtlMinutes: z.number().int().min(1).max(60).optional()
+});
+
+export const notificationDeliveryOutcomeSchema = z.object({
+  eventIds: z.array(z.string().uuid()).min(1).max(100),
+  claimToken: z.string().uuid().optional(),
+  outcome: z.enum(["sent", "failed", "retryable"]),
+  retryAfterMinutes: z.number().int().min(1).max(1440).optional(),
+  lastError: z.string().trim().max(500).optional()
+});
+
+export const notificationDebugStateFilterSchema = z
+  .array(z.enum(notificationEventStateValues))
+  .max(10);

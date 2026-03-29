@@ -7,6 +7,7 @@ import {
   listModerationAuditLogs,
   listModerationReports
 } from "@/lib/services/moderation-admin-service";
+import { listNotificationDeliveryEvents } from "@/lib/services/notification-delivery-service";
 
 type OperatorPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -30,9 +31,13 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     );
   }
 
-  const [reports, audits] = await Promise.all([
+  const [reports, audits, deliveryEvents] = await Promise.all([
     listModerationReports(50),
-    listModerationAuditLogs(20)
+    listModerationAuditLogs(20),
+    listNotificationDeliveryEvents({
+      limit: 24,
+      states: ["pending", "operational_only", "retryable", "failed", "sent"]
+    })
   ]);
   const authorizedToken = token as string;
 
@@ -45,6 +50,7 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
       <OperatorConsole
         initialReports={reports}
         initialAudits={audits}
+        initialDeliveryEvents={deliveryEvents}
         token={authorizedToken}
       />
     </div>

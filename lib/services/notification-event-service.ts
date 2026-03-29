@@ -31,6 +31,13 @@ type EventRow = {
   suppression_reason: NotificationSuppressionReason | null;
   dedupe_key: string | null;
   created_at: string;
+  claim_token: string | null;
+  claimed_at: string | null;
+  claim_expires_at: string | null;
+  next_retry_at: string | null;
+  last_attempt_at: string | null;
+  last_error: string | null;
+  attempt_count: number | null;
   sent_at: string | null;
   read_at: string | null;
 };
@@ -186,6 +193,13 @@ function mapEventRow(row: EventRow): NotificationEvent {
     suppressionReason: row.suppression_reason,
     dedupeKey: row.dedupe_key,
     createdAt: String(row.created_at),
+    claimToken: row.claim_token,
+    claimedAt: row.claimed_at,
+    claimExpiresAt: row.claim_expires_at,
+    nextRetryAt: row.next_retry_at,
+    lastAttemptAt: row.last_attempt_at,
+    lastError: row.last_error,
+    attemptCount: row.attempt_count ?? 0,
     sentAt: row.sent_at,
     readAt: row.read_at
   };

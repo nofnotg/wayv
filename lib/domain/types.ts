@@ -93,6 +93,8 @@ export const notificationEventStateValues = [
   "suppressed",
   "skipped_duplicate",
   "operational_only",
+  "retryable",
+  "failed",
   "sent",
   "read",
   "dismissed"
@@ -310,6 +312,13 @@ export type NotificationEvent = {
   suppressionReason?: NotificationSuppressionReason | null;
   dedupeKey?: string | null;
   createdAt: string;
+  claimToken?: string | null;
+  claimedAt?: string | null;
+  claimExpiresAt?: string | null;
+  nextRetryAt?: string | null;
+  lastAttemptAt?: string | null;
+  lastError?: string | null;
+  attemptCount?: number;
   sentAt?: string | null;
   readAt?: string | null;
 };
@@ -321,7 +330,12 @@ export type NotificationInboxSummary = {
   unreadByLane: Partial<Record<NotificationCandidateLane, number>>;
 };
 
-export type NotificationLifecycleAction = "read" | "dismiss" | "mark_sent";
+export type NotificationLifecycleAction =
+  | "read"
+  | "dismiss"
+  | "mark_sent"
+  | "mark_failed"
+  | "mark_retryable";
 
 export type NotificationDevice = {
   id: string;
@@ -400,3 +414,12 @@ export type NotificationEventWriteSummary = {
   suppressedByQuietHours: number;
   operationalOnly: number;
 };
+
+export type NotificationDeliveryBatch = {
+  claimToken: string;
+  claimedAt: string;
+  claimExpiresAt: string;
+  events: NotificationEvent[];
+};
+
+export type NotificationDeliveryOutcome = "sent" | "failed" | "retryable";

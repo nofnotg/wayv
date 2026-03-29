@@ -21,7 +21,8 @@ export const unreadNotificationStates: NotificationEventState[] = [
 
 export const deliverableNotificationStates: NotificationEventState[] = [
   "pending",
-  "operational_only"
+  "operational_only",
+  "retryable"
 ];
 
 export function isNotificationEventInboxVisible(
@@ -35,9 +36,22 @@ export function isNotificationEventUnread(input: Pick<NotificationEvent, "state"
 }
 
 export function isNotificationEventDeliverable(
-  input: Pick<NotificationEvent, "state" | "readAt">
+  input: Pick<NotificationEvent, "state" | "readAt" | "nextRetryAt">,
+  now = new Date()
 ) {
-  return deliverableNotificationStates.includes(input.state) && !input.readAt;
+  if (input.readAt) {
+    return false;
+  }
+
+  if (input.state === "retryable") {
+    if (!input.nextRetryAt) {
+      return true;
+    }
+
+    return new Date(input.nextRetryAt).getTime() <= now.getTime();
+  }
+
+  return deliverableNotificationStates.includes(input.state);
 }
 
 export function resolveNotificationEventState(
@@ -69,12 +83,41 @@ export function resolveNotificationEventState(
   }
 
   if (action === "mark_sent") {
-    if (currentState === "pending" || currentState === "operational_only") {
+    if (
+      currentState === "pending" ||
+      currentState === "operational_only" ||
+      currentState === "retryable"
+    ) {
       return "sent";
     }
 
     if (currentState === "sent") {
       return "sent";
+    }
+  }
+
+  if (action === "mark_failed") {
+    if (
+      currentState === "pending" ||
+      currentState === "operational_only" ||
+      currentState === "retryable"
+    ) {
+      return "failed";
+    }
+
+    if (currentState === "failed") {
+      return "failed";
+    }
+  }
+
+  if (action === "mark_retryable") {
+    if (
+      currentState === "pending" ||
+      currentState === "operational_only" ||
+      currentState === "retryable" ||
+      currentState === "failed"
+    ) {
+      return "retryable";
     }
   }
 
