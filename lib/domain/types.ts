@@ -310,6 +310,13 @@ export type NotificationEvent = {
   suppressionReason?: NotificationSuppressionReason | null;
   dedupeKey?: string | null;
   createdAt: string;
+  readAt?: string | null;
+};
+
+export type NotificationInboxSummary = {
+  unreadCount: number;
+  hasUnread: boolean;
+  latestUnreadAt: string | null;
 };
 
 export type NotificationDevice = {
@@ -342,6 +349,16 @@ export type ModerationReportListItem = ModerationReport & {
 
 export type ModeratorActionInput = {
   status: ModerationStatus;
+};
+
+export type ModerationAuditLog = {
+  id: string;
+  targetType: Extract<ModerationReportTargetType, "post" | "comment">;
+  targetId: string;
+  previousStatus: ModerationStatus;
+  nextStatus: ModerationStatus;
+  actorLabel: string;
+  createdAt: string;
 };
 
 export type NotificationCandidateLane = "for_you" | "rekindled" | "quiet_digest" | "operational";

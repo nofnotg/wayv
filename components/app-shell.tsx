@@ -4,14 +4,16 @@ import type { ReactNode } from "react";
 
 import { signOutAction } from "@/lib/services/auth-service";
 import { systemCopy } from "@/lib/copy/system-copy";
+import type { NotificationInboxSummary } from "@/lib/domain/types";
 import type { ViewerContext } from "@/lib/services/viewer-service";
 
 type AppShellProps = {
   children: ReactNode;
   viewer: ViewerContext | null;
+  notificationSummary: NotificationInboxSummary | null;
 };
 
-export function AppShell({ children, viewer }: AppShellProps) {
+export function AppShell({ children, viewer, notificationSummary }: AppShellProps) {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(157,233,255,0.22),_transparent_40%),linear-gradient(180deg,_#f8fbff_0%,_#f7f3ea_45%,_#eef5f7_100%)] text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-6 md:px-10">
@@ -36,9 +38,17 @@ export function AppShell({ children, viewer }: AppShellProps) {
                 </Link>
                 <Link
                   href={"/inbox" as Route}
-                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-slate-900/5"
                 >
                   {systemCopy.navigation.inbox}
+                  {notificationSummary?.hasUnread ? (
+                    <span
+                      className="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-900"
+                      aria-label={`${systemCopy.notifications.inboxSummaryTitle} ${notificationSummary.unreadCount}${systemCopy.notifications.unreadSuffix}`}
+                    >
+                      {systemCopy.notifications.unreadBadge} {notificationSummary.unreadCount}
+                    </span>
+                  ) : null}
                 </Link>
                 <Link
                   href="/profile"

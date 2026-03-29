@@ -31,6 +31,7 @@ type EventRow = {
   suppression_reason: NotificationSuppressionReason | null;
   dedupe_key: string | null;
   created_at: string;
+  read_at: string | null;
 };
 
 type StoredEventLookup = Pick<EventRow, "state" | "dedupe_key" | "created_at">;
@@ -183,7 +184,8 @@ function mapEventRow(row: EventRow): NotificationEvent {
     state: row.state,
     suppressionReason: row.suppression_reason,
     dedupeKey: row.dedupe_key,
-    createdAt: String(row.created_at)
+    createdAt: String(row.created_at),
+    readAt: row.read_at
   };
 }
 

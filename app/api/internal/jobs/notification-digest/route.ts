@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { isInternalRequestAuthorized } from "@/lib/services/internal-auth-service";
+import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import { runNotificationDigestJob } from "@/lib/services/notification-event-service";
 
 export async function POST(request: NextRequest) {
-  if (!isInternalRequestAuthorized(request)) {
+  const internal = getInternalRequestContext(request);
+  if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

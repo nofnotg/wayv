@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 
 import type {
+  ModerationAuditLog,
   ModerationReportListItem,
   ModerationStatus
 } from "@/lib/domain/types";
@@ -19,6 +20,49 @@ function mapReportRow(row: Record<string, unknown>): ModerationReportListItem {
     createdAt: String(row.created_at),
     targetStatus: (row.target_status as ModerationStatus | null) ?? null
   };
+}
+
+function mapAuditRow(row: Record<string, unknown>): ModerationAuditLog {
+  return {
+    id: String(row.id),
+    targetType: row.target_type as ModerationAuditLog["targetType"],
+    targetId: String(row.target_id),
+    previousStatus: row.previous_status as ModerationStatus,
+    nextStatus: row.next_status as ModerationStatus,
+    actorLabel: String(row.actor_label),
+    createdAt: String(row.created_at)
+  };
+}
+
+async function insertModerationAuditLog(input: {
+  targetType: ModerationAuditLog["targetType"];
+  targetId: string;
+  previousStatus: ModerationStatus;
+  nextStatus: ModerationStatus;
+  actorLabel: string;
+}) {
+  if (input.previousStatus === input.nextStatus) {
+    return null;
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("moderation_audit_logs")
+    .insert({
+      target_type: input.targetType,
+      target_id: input.targetId,
+      previous_status: input.previousStatus,
+      next_status: input.nextStatus,
+      actor_label: input.actorLabel
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "moderation-audit-failed");
+  }
+
+  return mapAuditRow(data as Record<string, unknown>);
 }
 
 export async function listModerationReports(limit = 50): Promise<ModerationReportListItem[]> {
@@ -76,48 +120,113 @@ export async function listModerationReports(limit = 50): Promise<ModerationRepor
   );
 }
 
-export async function updatePostModerationStatus(postId: string, status: ModerationStatus) {
+export async function listModerationAuditLogs(limit = 50): Promise<ModerationAuditLog[]> {
   const supabase = createAdminSupabaseClient();
+  const safeLimit = Math.max(1, Math.min(limit, 100));
   const { data, error } = await supabase
+    .from("moderation_audit_logs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => mapAuditRow(row as Record<string, unknown>));
+}
+
+export async function updatePostModerationStatus(
+  postId: string,
+  status: ModerationStatus,
+  actorLabel = "internal-token"
+) {
+  const supabase = createAdminSupabaseClient();
+  const { data: current, error: currentError } = await supabase
     .from("wave_posts")
-    .update({ moderation_status: status })
-    .eq("id", postId)
     .select("id, moderation_status")
+    .eq("id", postId)
     .single();
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "post-not-found");
+  if (currentError || !current) {
+    throw new Error(currentError?.message ?? "post-not-found");
+  }
+
+  const previousStatus = current.moderation_status as ModerationStatus;
+  if (previousStatus !== status) {
+    const { error } = await supabase
+      .from("wave_posts")
+      .update({ moderation_status: status })
+      .eq("id", postId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await insertModerationAuditLog({
+      targetType: "post",
+      targetId: postId,
+      previousStatus,
+      nextStatus: status,
+      actorLabel
+    });
   }
 
   revalidatePath("/");
   revalidatePath(`/wave/${postId}`);
 
   return {
-    id: String(data.id),
-    status: data.moderation_status as ModerationStatus
+    id: postId,
+    status,
+    previousStatus
   };
 }
 
-export async function updateCommentModerationStatus(commentId: string, status: ModerationStatus) {
+export async function updateCommentModerationStatus(
+  commentId: string,
+  status: ModerationStatus,
+  actorLabel = "internal-token"
+) {
   const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase
+  const { data: current, error: currentError } = await supabase
     .from("wave_comments")
-    .update({ moderation_status: status })
-    .eq("id", commentId)
     .select("id, post_id, moderation_status")
+    .eq("id", commentId)
     .single();
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "comment-not-found");
+  if (currentError || !current) {
+    throw new Error(currentError?.message ?? "comment-not-found");
   }
 
-  await refreshWaveSnapshot(String(data.post_id));
+  const postId = String(current.post_id);
+  const previousStatus = current.moderation_status as ModerationStatus;
+  if (previousStatus !== status) {
+    const { error } = await supabase
+      .from("wave_comments")
+      .update({ moderation_status: status })
+      .eq("id", commentId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await insertModerationAuditLog({
+      targetType: "comment",
+      targetId: commentId,
+      previousStatus,
+      nextStatus: status,
+      actorLabel
+    });
+  }
+
+  await refreshWaveSnapshot(postId);
   revalidatePath("/");
-  revalidatePath(`/wave/${String(data.post_id)}`);
+  revalidatePath(`/wave/${postId}`);
 
   return {
-    id: String(data.id),
-    postId: String(data.post_id),
-    status: data.moderation_status as ModerationStatus
+    id: commentId,
+    postId,
+    status,
+    previousStatus
   };
 }

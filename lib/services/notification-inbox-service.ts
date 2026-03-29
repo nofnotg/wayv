@@ -2,7 +2,8 @@ import { revalidatePath } from "next/cache";
 
 import type {
   NotificationEvent,
-  NotificationEventState
+  NotificationEventState,
+  NotificationInboxSummary
 } from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -20,6 +21,7 @@ type EventRow = {
   suppression_reason: NotificationEvent["suppressionReason"];
   dedupe_key: string | null;
   created_at: string;
+  read_at: string | null;
 };
 
 const visibleInboxStates: NotificationEventState[] = [
@@ -29,6 +31,8 @@ const visibleInboxStates: NotificationEventState[] = [
   "read",
   "dismissed"
 ];
+
+const unreadInboxStates: NotificationEventState[] = ["pending", "operational_only", "sent"];
 
 function mapEventRow(row: EventRow): NotificationEvent {
   return {
@@ -43,7 +47,8 @@ function mapEventRow(row: EventRow): NotificationEvent {
     state: row.state,
     suppressionReason: row.suppression_reason,
     dedupeKey: row.dedupe_key,
-    createdAt: String(row.created_at)
+    createdAt: String(row.created_at),
+    readAt: row.read_at
   };
 }
 
@@ -60,7 +65,11 @@ export function resolveNotificationEventState(
       return "read";
     }
 
-    if (currentState === "pending" || currentState === "operational_only" || currentState === "sent") {
+    if (
+      currentState === "pending" ||
+      currentState === "operational_only" ||
+      currentState === "sent"
+    ) {
       return "read";
     }
   }
@@ -70,7 +79,12 @@ export function resolveNotificationEventState(
       return "dismissed";
     }
 
-    if (currentState === "pending" || currentState === "operational_only" || currentState === "sent" || currentState === "read") {
+    if (
+      currentState === "pending" ||
+      currentState === "operational_only" ||
+      currentState === "sent" ||
+      currentState === "read"
+    ) {
       return "dismissed";
     }
   }
@@ -93,6 +107,46 @@ export async function listNotificationInboxEvents(userId: string, limit = 50) {
   }
 
   return (data ?? []).map((row) => mapEventRow(row as EventRow));
+}
+
+export async function getNotificationInboxSummary(userId: string): Promise<NotificationInboxSummary> {
+  const supabase = await createServerSupabaseClient();
+  const unreadQuery = supabase
+    .from("notification_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("state", unreadInboxStates)
+    .is("read_at", null);
+
+  const latestQuery = supabase
+    .from("notification_events")
+    .select("created_at")
+    .eq("user_id", userId)
+    .in("state", unreadInboxStates)
+    .is("read_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const [{ count, error: countError }, { data: latest, error: latestError }] = await Promise.all([
+    unreadQuery,
+    latestQuery
+  ]);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  if (latestError) {
+    throw new Error(latestError.message);
+  }
+
+  const unreadCount = Number(count ?? 0);
+  return {
+    unreadCount,
+    hasUnread: unreadCount > 0,
+    latestUnreadAt: latest?.created_at ?? null
+  };
 }
 
 async function mutateNotificationEventState(eventId: string, userId: string, action: InboxAction) {
@@ -135,6 +189,7 @@ async function mutateNotificationEventState(eventId: string, userId: string, act
   }
 
   revalidatePath("/inbox");
+  revalidatePath("/", "layout");
   return mapEventRow(data as EventRow);
 }
 

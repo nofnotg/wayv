@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
-import { listModerationReports } from "@/lib/services/moderation-admin-service";
+import { listModerationAuditLogs } from "@/lib/services/moderation-admin-service";
 
 export async function GET(request: NextRequest) {
   const internal = getInternalRequestContext(request);
@@ -10,6 +10,6 @@ export async function GET(request: NextRequest) {
   }
 
   const limit = Number(new URL(request.url).searchParams.get("limit") ?? "50");
-  const reports = await listModerationReports(limit);
-  return NextResponse.json({ reports });
+  const audits = await listModerationAuditLogs(limit);
+  return NextResponse.json({ audits });
 }

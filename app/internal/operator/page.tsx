@@ -3,7 +3,10 @@ import { SectionCard } from "@/components/section-card";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
 import { isInternalAccessTokenValid } from "@/lib/services/internal-auth-service";
-import { listModerationReports } from "@/lib/services/moderation-admin-service";
+import {
+  listModerationAuditLogs,
+  listModerationReports
+} from "@/lib/services/moderation-admin-service";
 
 type OperatorPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -27,7 +30,10 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     );
   }
 
-  const reports = await listModerationReports(50);
+  const [reports, audits] = await Promise.all([
+    listModerationReports(50),
+    listModerationAuditLogs(20)
+  ]);
   const authorizedToken = token as string;
 
   return (
@@ -36,7 +42,11 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
         title={systemCopy.operator.title}
         description={systemCopy.operator.description}
       />
-      <OperatorConsole initialReports={reports} token={authorizedToken} />
+      <OperatorConsole
+        initialReports={reports}
+        initialAudits={audits}
+        token={authorizedToken}
+      />
     </div>
   );
 }

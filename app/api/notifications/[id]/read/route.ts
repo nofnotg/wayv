@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { markNotificationEventRead } from "@/lib/services/notification-inbox-service";
+import {
+  getNotificationInboxSummary,
+  markNotificationEventRead
+} from "@/lib/services/notification-inbox-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 type RouteProps = {
@@ -17,7 +20,8 @@ export async function POST(_: NextRequest, { params }: RouteProps) {
 
   try {
     const event = await markNotificationEventRead(id, viewer.userId);
-    return NextResponse.json({ event });
+    const summary = await getNotificationInboxSummary(viewer.userId);
+    return NextResponse.json({ event, summary });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "notification-update-failed" },

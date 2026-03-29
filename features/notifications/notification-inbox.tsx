@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
-import type { NotificationEvent } from "@/lib/domain/types";
+import type { NotificationEvent, NotificationInboxSummary } from "@/lib/domain/types";
 import { formatDateTime } from "@/lib/utils";
 
 type NotificationInboxProps = {
   initialEvents: NotificationEvent[];
+  initialSummary: NotificationInboxSummary;
 };
 
 function groupByLane(events: NotificationEvent[]) {
@@ -27,8 +29,13 @@ function groupByLane(events: NotificationEvent[]) {
   return [...grouped.entries()];
 }
 
-export function NotificationInbox({ initialEvents }: NotificationInboxProps) {
+export function NotificationInbox({
+  initialEvents,
+  initialSummary
+}: NotificationInboxProps) {
+  const router = useRouter();
   const [events, setEvents] = useState(initialEvents);
+  const [summary, setSummary] = useState(initialSummary);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -52,26 +59,56 @@ export function NotificationInbox({ initialEvents }: NotificationInboxProps) {
       );
 
       if (!response.ok) {
-        setMessage("알림 상태를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.");
+        setMessage(systemCopy.notifications.updateError);
         return;
       }
 
       const data = await response.json();
       updateEvent(data.event);
+      if (data.summary) {
+        setSummary(data.summary);
+      }
       setMessage(null);
+      router.refresh();
     });
   };
 
   if (!events.length) {
     return (
-      <SectionCard>
-        <p className="text-sm leading-7 text-slate-600">{systemCopy.notifications.inboxEmpty}</p>
-      </SectionCard>
+      <div className="grid gap-6">
+        <SectionCard>
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusChip
+              label={systemCopy.notifications.inboxSummaryEmpty}
+              tone="quiet"
+            />
+          </div>
+        </SectionCard>
+        <SectionCard>
+          <p className="text-sm leading-7 text-slate-600">{systemCopy.notifications.inboxEmpty}</p>
+        </SectionCard>
+      </div>
     );
   }
 
   return (
     <div className="grid gap-6">
+      <SectionCard>
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusChip
+            label={
+              summary.hasUnread
+                ? `${systemCopy.notifications.inboxSummaryTitle} ${summary.unreadCount}${systemCopy.notifications.unreadSuffix}`
+                : systemCopy.notifications.inboxSummaryEmpty
+            }
+            tone={summary.hasUnread ? "active" : "quiet"}
+          />
+          {summary.latestUnreadAt ? (
+            <span className="text-xs text-slate-500">{formatDateTime(summary.latestUnreadAt)}</span>
+          ) : null}
+        </div>
+      </SectionCard>
+
       {message ? (
         <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {message}
@@ -100,7 +137,11 @@ export function NotificationInbox({ initialEvents }: NotificationInboxProps) {
                         event.state as keyof typeof systemCopy.notifications.stateLabels
                       ] ?? event.state
                     }
-                    tone={event.state === "pending" || event.state === "operational_only" ? "active" : "quiet"}
+                    tone={
+                      event.state === "pending" || event.state === "operational_only"
+                        ? "active"
+                        : "quiet"
+                    }
                   />
                   <span className="text-xs text-slate-500">{formatDateTime(event.createdAt)}</span>
                 </div>
@@ -112,7 +153,7 @@ export function NotificationInbox({ initialEvents }: NotificationInboxProps) {
                       href={`/wave/${event.postId}`}
                       className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                     >
-                      파도 보기
+                      {systemCopy.notifications.openWave}
                     </Link>
                   ) : null}
                   <button

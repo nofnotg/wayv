@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { isInternalRequestAuthorized } from "@/lib/services/internal-auth-service";
+import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import { updatePostModerationStatus } from "@/lib/services/moderation-admin-service";
 import { moderationUpdateSchema } from "@/lib/validation/schemas";
 
@@ -9,7 +9,8 @@ type RouteProps = {
 };
 
 export async function PATCH(request: NextRequest, { params }: RouteProps) {
-  if (!isInternalRequestAuthorized(request)) {
+  const internal = getInternalRequestContext(request);
+  if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -22,7 +23,11 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
   const { id } = await params;
 
   try {
-    const moderation = await updatePostModerationStatus(id, parsed.data.status);
+    const moderation = await updatePostModerationStatus(
+      id,
+      parsed.data.status,
+      internal.actorLabel
+    );
     return NextResponse.json({ moderation });
   } catch (error) {
     return NextResponse.json(

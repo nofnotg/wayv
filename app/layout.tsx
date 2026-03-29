@@ -3,6 +3,7 @@ import { Newsreader, Noto_Sans_KR } from "next/font/google";
 
 import { AppShell } from "@/components/app-shell";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { getNotificationInboxSummary } from "@/lib/services/notification-inbox-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 import "./globals.css";
@@ -28,11 +29,16 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const viewer = await getViewerContext();
+  const notificationSummary = viewer
+    ? await getNotificationInboxSummary(viewer.userId)
+    : null;
 
   return (
     <html lang="ko">
       <body className={`${serif.variable} ${sans.variable} font-sans antialiased`}>
-        <AppShell viewer={viewer}>{children}</AppShell>
+        <AppShell viewer={viewer} notificationSummary={notificationSummary}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );
