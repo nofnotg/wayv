@@ -443,6 +443,12 @@ export type NotificationDeliveryScope =
   | "sent"
   | "failed";
 
+export type NotificationProviderRetryCategory =
+  | "temporary"
+  | "rate_limited"
+  | "provider_rejected"
+  | "unknown";
+
 export type NotificationSenderPayload = {
   channel: NotificationChannel;
   recipient: {
@@ -466,6 +472,7 @@ export type NotificationSenderPayload = {
 export type NotificationSenderBatchItem = {
   event: NotificationEvent;
   adapterKey: string;
+  providerKey: string;
   payload: NotificationSenderPayload;
 };
 
@@ -480,6 +487,10 @@ export type NotificationSenderPreviewResult = {
   accepted: true;
   channel: NotificationChannel;
   adapterKey: string;
+  providerKey: string;
+  externalMessageId: string | null;
+  retryCategory: NotificationProviderRetryCategory | null;
+  providerStatusCode: string | null;
   payload: NotificationSenderPayload;
 };
 
@@ -507,6 +518,10 @@ export type NotificationExecutionRunResult = {
   eventId: string;
   channel: NotificationChannel;
   adapterKey: string;
+  providerKey: string;
+  externalMessageId: string | null;
+  retryCategory: NotificationProviderRetryCategory | null;
+  providerStatusCode: string | null;
   outcome: NotificationDeliveryOutcome | "guardrail_skipped";
   message: string | null;
 };
@@ -546,6 +561,10 @@ export type NotificationDeliveryAttemptLog = {
   eventId: string;
   channel: NotificationChannel;
   adapterKey: string;
+  providerKey: string;
+  externalMessageId: string | null;
+  retryCategory: NotificationProviderRetryCategory | null;
+  providerStatusCode: string | null;
   outcome: NotificationDeliveryOutcome | "guardrail_skipped";
   message: string | null;
   createdAt: string;

@@ -4,6 +4,7 @@ import { buildBaseNotificationSenderPayload } from "@/lib/services/notification-
 export const emailNoopSenderAdapter: NotificationSenderAdapter = {
   adapterKey: "noop-email",
   channel: "email",
+  providerKey: "email-noop",
   buildPayload(event, claimToken) {
     const payload = buildBaseNotificationSenderPayload(event, claimToken);
     payload.recipient.address = `${event.userId}@pending.local`;
@@ -14,6 +15,10 @@ export const emailNoopSenderAdapter: NotificationSenderAdapter = {
       accepted: true,
       channel: "email",
       adapterKey: "noop-email",
+      providerKey: "email-noop",
+      externalMessageId: `email-preview:${item.event.id}`,
+      retryCategory: null,
+      providerStatusCode: "preview-ok",
       payload: item.payload
     };
   }

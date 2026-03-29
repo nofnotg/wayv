@@ -81,10 +81,10 @@ describe("notification delivery runner and control routes", () => {
     expect(response.status).toBe(200);
   });
 
-  it("requeues retryable or failed events through the control route", async () => {
+  it("requeues selected retryable or failed events through the control route", async () => {
     requeueNotificationDeliveryEvents.mockResolvedValue({
       action: "requeue",
-      updated: [{ id: "event-1", state: "pending" }],
+      updated: [{ id: "event-1", state: "pending" }, { id: "event-2", state: "pending" }],
       skipped: []
     });
     const { POST } = await import("../../app/api/internal/delivery/control/route");
@@ -98,14 +98,20 @@ describe("notification delivery runner and control routes", () => {
         },
         body: JSON.stringify({
           action: "requeue",
-          eventIds: ["11111111-1111-4111-8111-111111111111"]
+          eventIds: [
+            "11111111-1111-4111-8111-111111111111",
+            "22222222-2222-4222-8222-222222222222"
+          ]
         })
       }) as never
     );
 
     expect(requeueNotificationDeliveryEvents).toHaveBeenCalledWith({
       action: "requeue",
-      eventIds: ["11111111-1111-4111-8111-111111111111"]
+      eventIds: [
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222"
+      ]
     });
     expect(response.status).toBe(200);
   });

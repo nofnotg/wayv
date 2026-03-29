@@ -222,6 +222,10 @@ export const systemCopy = {
     runDetailEmpty: "실행 기록 하나를 고르면 여기에서 시도별 흐름을 볼 수 있어요.",
     runDetailLoading: "실행 상세를 불러오는 중이에요...",
     viewRunDetail: "이 실행 살펴보기",
+    runDetailFilterAll: "전체",
+    selectedRetry: "선택한 항목 다시 대기열에 두기",
+    selectedRequeueing: "선택한 항목을 다시 대기열에 두는 중이에요...",
+    selectedRetryLabel: "선택",
     attemptMessageEmpty: "남겨진 추가 메모가 없어요.",
     runSummaryLabels: {
       claimed: "가져온 이벤트",
@@ -257,6 +261,10 @@ export const systemCopy = {
       claim: "클레임",
       attempt: "시도",
       adapter: "어댑터",
+      provider: "Provider",
+      externalMessageId: "외부 메시지 ID",
+      retryCategory: "재시도 분류",
+      providerStatusCode: "Provider 상태 코드",
       outcome: "결과",
       message: "메시지"
     },

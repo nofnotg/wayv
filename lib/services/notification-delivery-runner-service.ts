@@ -21,6 +21,9 @@ import {
 
 type NotificationRunnerError = Error & {
   retryable?: boolean;
+  retryCategory?: NotificationExecutionRunResult["retryCategory"];
+  providerStatusCode?: string | null;
+  externalMessageId?: string | null;
 };
 
 export type NotificationDeliveryRunnerInput = {
@@ -89,6 +92,10 @@ export async function runNotificationDeliveryBatch(
         eventId,
         channel: item.event.channel,
         adapterKey: item.adapterKey,
+        providerKey: item.providerKey,
+        externalMessageId: null,
+        retryCategory: null,
+        providerStatusCode: null,
         outcome: "guardrail_skipped",
         message: "max-attempts-reached"
       });
@@ -97,7 +104,7 @@ export async function runNotificationDeliveryBatch(
 
     try {
       const adapter = getNotificationSenderAdapter(item.event.channel);
-      await adapter.previewSend(item);
+      const previewResult = await adapter.previewSend(item);
       await markNotificationBatchSent({
         eventIds: [eventId],
         claimToken: batch.claimToken
@@ -107,6 +114,10 @@ export async function runNotificationDeliveryBatch(
         eventId,
         channel: item.event.channel,
         adapterKey: item.adapterKey,
+        providerKey: previewResult.providerKey,
+        externalMessageId: previewResult.externalMessageId,
+        retryCategory: previewResult.retryCategory,
+        providerStatusCode: previewResult.providerStatusCode,
         outcome: "sent",
         message: null
       });
@@ -130,6 +141,10 @@ export async function runNotificationDeliveryBatch(
           eventId,
           channel: item.event.channel,
           adapterKey: item.adapterKey,
+          providerKey: item.providerKey,
+          externalMessageId: normalizedError.externalMessageId ?? null,
+          retryCategory: normalizedError.retryCategory ?? "temporary",
+          providerStatusCode: normalizedError.providerStatusCode ?? null,
           outcome: "retryable",
           message
         });
@@ -146,6 +161,10 @@ export async function runNotificationDeliveryBatch(
         eventId,
         channel: item.event.channel,
         adapterKey: item.adapterKey,
+        providerKey: item.providerKey,
+        externalMessageId: normalizedError.externalMessageId ?? null,
+        retryCategory: normalizedError.retryCategory ?? null,
+        providerStatusCode: normalizedError.providerStatusCode ?? null,
         outcome: "failed",
         message
       });

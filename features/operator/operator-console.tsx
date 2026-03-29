@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
   ModerationAuditLog,
+  NotificationDeliveryAttemptLog,
   NotificationDeliveryRunDetail,
   NotificationDeliveryRunRecord,
   ModerationReportListItem,
@@ -32,6 +33,8 @@ type OperatorConsoleProps = {
 };
 
 const statusOptions: ModerationStatus[] = ["active", "under_review", "limited", "removed"];
+const runDetailFilterOptions = ["all", "failed", "retryable", "sent", "guardrail_skipped"] as const;
+type RunDetailFilter = (typeof runDetailFilterOptions)[number];
 
 function groupAuditsByTargetType(audits: ModerationAuditLog[]) {
   return {
@@ -93,6 +96,19 @@ function getDeliveryAction(
   return null;
 }
 
+function canSelectAttemptForRetry(attempt: NotificationDeliveryAttemptLog) {
+  return attempt.outcome === "failed" || attempt.outcome === "retryable";
+}
+
+function toggleSelectedIds(current: string[], id: string) {
+  return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+}
+
+function resolveActionableEventIds(groupEventIds: string[], selectedIds: string[]) {
+  const selectedInGroup = groupEventIds.filter((eventId) => selectedIds.includes(eventId));
+  return selectedInGroup.length ? selectedInGroup : groupEventIds;
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
@@ -112,6 +128,9 @@ export function OperatorConsole({
   const [selectedRunDetail, setSelectedRunDetail] = useState<NotificationDeliveryRunDetail | null>(
     null
   );
+  const [selectedDeliveryEventIds, setSelectedDeliveryEventIds] = useState<string[]>([]);
+  const [selectedRunAttemptEventIds, setSelectedRunAttemptEventIds] = useState<string[]>([]);
+  const [runDetailFilter, setRunDetailFilter] = useState<RunDetailFilter>("all");
   const [runDetailLoading, setRunDetailLoading] = useState(false);
   const [runSummary, setRunSummary] = useState<NotificationExecutionRunSummary | null>(null);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
@@ -162,6 +181,30 @@ export function OperatorConsole({
     ],
     [deliveryEvents]
   );
+  const visibleRunAttempts = useMemo(() => {
+    if (!selectedRunDetail) {
+      return [] as NotificationDeliveryAttemptLog[];
+    }
+
+    if (runDetailFilter === "all") {
+      return selectedRunDetail.attempts;
+    }
+
+    return selectedRunDetail.attempts.filter((attempt) => attempt.outcome === runDetailFilter);
+  }, [runDetailFilter, selectedRunDetail]);
+  const selectedRunRetryableEventIds = useMemo(() => {
+    if (!selectedRunDetail) {
+      return [] as string[];
+    }
+
+    const retryableIds = new Set(
+      selectedRunDetail.attempts
+        .filter((attempt) => canSelectAttemptForRetry(attempt))
+        .map((attempt) => attempt.eventId)
+    );
+
+    return selectedRunAttemptEventIds.filter((eventId) => retryableIds.has(eventId));
+  }, [selectedRunAttemptEventIds, selectedRunDetail]);
 
   const reloadDeliveryEvents = async () => {
     const response = await fetch(
@@ -200,6 +243,8 @@ export function OperatorConsole({
 
   const loadRunDetail = async (runId: string) => {
     setRunDetailLoading(true);
+    setRunDetailFilter("all");
+    setSelectedRunAttemptEventIds([]);
 
     try {
       const response = await fetch(`/api/internal/debug/notification-delivery-runs/${runId}`, {
@@ -340,6 +385,13 @@ export function OperatorConsole({
 
       await reloadDeliveryEvents();
       await reloadDeliveryRuns();
+      setSelectedDeliveryEventIds((current) => current.filter((eventId) => !eventIds.includes(eventId)));
+      setSelectedRunAttemptEventIds((current) =>
+        current.filter((eventId) => !eventIds.includes(eventId))
+      );
+      if (selectedRunDetail) {
+        await loadRunDetail(selectedRunDetail.run.id);
+      }
       setMessage(systemCopy.operator.deliveryControlSaved);
       router.refresh();
     });
@@ -663,22 +715,68 @@ export function OperatorConsole({
                 tone="quiet"
               />
             </div>
-            {!selectedRunDetail.attempts.length ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {runDetailFilterOptions.map((filterKey) => (
+                <button
+                  key={filterKey}
+                  type="button"
+                  onClick={() => setRunDetailFilter(filterKey)}
+                  className={`rounded-full border px-3 py-1 text-xs ${
+                    runDetailFilter === filterKey
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-300 text-slate-700"
+                  }`}
+                >
+                  {filterKey === "all"
+                    ? systemCopy.operator.runDetailFilterAll
+                    : systemCopy.operator.attemptOutcomeLabels[filterKey]}
+                </button>
+              ))}
+              {selectedRunRetryableEventIds.length ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => applyDeliveryControl("requeue", selectedRunRetryableEventIds)}
+                  className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {pending
+                    ? systemCopy.operator.selectedRequeueing
+                    : `${systemCopy.operator.selectedRetry} ${selectedRunRetryableEventIds.length}`}
+                </button>
+              ) : null}
+            </div>
+            {!visibleRunAttempts.length ? (
               <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.runDetailEmpty}</p>
             ) : (
               <div className="grid gap-3">
-                {selectedRunDetail.attempts.map((attempt) => (
+                {visibleRunAttempts.map((attempt) => (
                   <article
                     key={attempt.id}
                     className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
                   >
                     <div className="flex flex-wrap items-center gap-2">
+                      {canSelectAttemptForRetry(attempt) ? (
+                        <label className="flex items-center gap-2 text-xs text-slate-500">
+                          <input
+                            type="checkbox"
+                            checked={selectedRunAttemptEventIds.includes(attempt.eventId)}
+                            disabled={pending}
+                            onChange={() =>
+                              setSelectedRunAttemptEventIds((current) =>
+                                toggleSelectedIds(current, attempt.eventId)
+                              )
+                            }
+                          />
+                          {systemCopy.operator.selectedRetryLabel}
+                        </label>
+                      ) : null}
                       <StatusChip
                         label={systemCopy.operator.attemptOutcomeLabels[attempt.outcome]}
                         tone={attempt.outcome === "failed" ? "active" : "quiet"}
                       />
                       <StatusChip label={attempt.channel} tone="quiet" />
                       <StatusChip label={attempt.adapterKey} tone="quiet" />
+                      <StatusChip label={attempt.providerKey} tone="quiet" />
                       <span className="text-xs text-slate-500">
                         {formatDateTime(attempt.createdAt)}
                       </span>
@@ -702,6 +800,36 @@ export function OperatorConsole({
                         </span>{" "}
                         {attempt.adapterKey}
                       </p>
+                      <p>
+                        <span className="font-medium text-slate-900">
+                          {systemCopy.operator.labels.provider}
+                        </span>{" "}
+                        {attempt.providerKey}
+                      </p>
+                      {attempt.externalMessageId ? (
+                        <p>
+                          <span className="font-medium text-slate-900">
+                            {systemCopy.operator.labels.externalMessageId}
+                          </span>{" "}
+                          {attempt.externalMessageId}
+                        </p>
+                      ) : null}
+                      {attempt.retryCategory ? (
+                        <p>
+                          <span className="font-medium text-slate-900">
+                            {systemCopy.operator.labels.retryCategory}
+                          </span>{" "}
+                          {attempt.retryCategory}
+                        </p>
+                      ) : null}
+                      {attempt.providerStatusCode ? (
+                        <p>
+                          <span className="font-medium text-slate-900">
+                            {systemCopy.operator.labels.providerStatusCode}
+                          </span>{" "}
+                          {attempt.providerStatusCode}
+                        </p>
+                      ) : null}
                       <p>
                         <span className="font-medium text-slate-900">
                           {systemCopy.operator.labels.message}
@@ -735,7 +863,10 @@ export function OperatorConsole({
                         onClick={() =>
                           applyDeliveryControl(
                             "requeue",
-                            group.items.map((event) => event.id)
+                            resolveActionableEventIds(
+                              group.items.map((event) => event.id),
+                              selectedDeliveryEventIds
+                            )
                           )
                         }
                         className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
@@ -752,7 +883,10 @@ export function OperatorConsole({
                         onClick={() =>
                           applyDeliveryControl(
                             "release_expired_claim",
-                            group.items.map((event) => event.id)
+                            resolveActionableEventIds(
+                              group.items.map((event) => event.id),
+                              selectedDeliveryEventIds
+                            )
                           )
                         }
                         className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
@@ -773,6 +907,21 @@ export function OperatorConsole({
                           className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
                         >
                           <div className="flex flex-wrap items-center gap-2">
+                            {control ? (
+                              <label className="flex items-center gap-2 text-xs text-slate-500">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedDeliveryEventIds.includes(event.id)}
+                                  disabled={pending}
+                                  onChange={() =>
+                                    setSelectedDeliveryEventIds((current) =>
+                                      toggleSelectedIds(current, event.id)
+                                    )
+                                  }
+                                />
+                                {systemCopy.operator.selectedRetryLabel}
+                              </label>
+                            ) : null}
                             <StatusChip label={getDeliveryLabel(event)} tone="quiet" />
                             {event.lane ? (
                               <StatusChip

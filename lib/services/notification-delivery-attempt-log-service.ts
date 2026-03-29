@@ -13,6 +13,10 @@ type AttemptLogRow = {
   event_id: string;
   channel: NotificationDeliveryAttemptLog["channel"];
   adapter_key: string;
+  provider_key: string | null;
+  external_message_id: string | null;
+  retry_category: NotificationDeliveryAttemptLog["retryCategory"];
+  provider_status_code: string | null;
   outcome: NotificationDeliveryAttemptLog["outcome"];
   message: string | null;
   created_at: string;
@@ -53,6 +57,10 @@ function mapAttemptRow(row: AttemptLogRow): NotificationDeliveryAttemptLog {
     eventId: row.event_id,
     channel: row.channel,
     adapterKey: row.adapter_key,
+    providerKey: row.provider_key ?? row.adapter_key,
+    externalMessageId: row.external_message_id,
+    retryCategory: row.retry_category,
+    providerStatusCode: row.provider_status_code,
     outcome: row.outcome,
     message: row.message,
     createdAt: row.created_at
@@ -78,6 +86,10 @@ export async function recordNotificationDeliveryAttemptLogs(input: {
         event_id: attempt.eventId,
         channel: attempt.channel,
         adapter_key: attempt.adapterKey,
+        provider_key: attempt.providerKey,
+        external_message_id: attempt.externalMessageId,
+        retry_category: attempt.retryCategory,
+        provider_status_code: attempt.providerStatusCode,
         outcome: attempt.outcome,
         message: attempt.message
       }))

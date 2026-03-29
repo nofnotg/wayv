@@ -9,6 +9,7 @@ import type {
 export type NotificationSenderAdapter = {
   adapterKey: string;
   channel: NotificationChannel;
+  providerKey: string;
   buildPayload(event: NotificationEvent, claimToken: string): NotificationSenderPayload;
   previewSend(item: NotificationSenderBatchItem): Promise<NotificationSenderPreviewResult>;
 };

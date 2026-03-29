@@ -27,6 +27,7 @@ export function prepareNotificationDeliveryBatchForSender(
     return {
       event,
       adapterKey: adapter.adapterKey,
+      providerKey: adapter.providerKey,
       payload: adapter.buildPayload(event, batch.claimToken)
     };
   });

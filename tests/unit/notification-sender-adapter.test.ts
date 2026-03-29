@@ -55,6 +55,7 @@ describe("notification sender adapter", () => {
       }
     });
     expect(senderBatch.items[0].adapterKey).toBe("noop-inapp");
+    expect(senderBatch.items[0].providerKey).toBe("inapp-noop");
   });
 
   it("adds channel-specific recipient placeholders for future provider wiring", () => {
@@ -92,5 +93,34 @@ describe("notification sender adapter", () => {
 
     expect(emailPayload.recipient.address).toBe("viewer-2@pending.local");
     expect(pushPayload.recipient.deviceToken).toBe("pending:viewer-3");
+  });
+
+  it("returns provider-stub preview metadata for future sender wiring", async () => {
+    const senderBatch = prepareNotificationDeliveryBatchForSender({
+      claimToken: "11111111-1111-4111-8111-111111111111",
+      claimedAt: "2026-03-29T10:00:00.000Z",
+      claimExpiresAt: "2026-03-29T10:10:00.000Z",
+      events: [
+        {
+          id: "44444444-4444-4444-8444-444444444444",
+          userId: "viewer-4",
+          type: "quiet_digest",
+          channel: "email",
+          lane: "quiet_digest",
+          postId: null,
+          title: "이 메일은 아직 보내지 않아요",
+          body: "Provider 연결 전까지는 미리보기만 남겨 둘게요.",
+          state: "pending",
+          createdAt: "2026-03-29T09:30:00.000Z"
+        }
+      ]
+    });
+
+    const preview = await getNotificationSenderAdapter("email").previewSend(senderBatch.items[0]);
+
+    expect(preview.providerKey).toBe("email-noop");
+    expect(preview.externalMessageId).toBe("email-preview:44444444-4444-4444-8444-444444444444");
+    expect(preview.providerStatusCode).toBe("preview-ok");
+    expect(preview.retryCategory).toBeNull();
   });
 });

@@ -55,7 +55,16 @@ describe("notification delivery runner service", () => {
         }
       ]
     });
-    const previewSend = vi.fn().mockResolvedValue({ accepted: true });
+    const previewSend = vi.fn().mockResolvedValue({
+      accepted: true,
+      channel: "inapp",
+      adapterKey: "noop-inapp",
+      providerKey: "inapp-noop",
+      externalMessageId: "inapp-preview:event-1",
+      retryCategory: null,
+      providerStatusCode: "preview-ok",
+      payload: {}
+    });
     getNotificationSenderAdapter.mockReturnValue({ previewSend });
     prepareNotificationDeliveryBatchForSender.mockReturnValue({
       claimToken: "claim-1",
@@ -69,6 +78,7 @@ describe("notification delivery runner service", () => {
             attemptCount: 0
           },
           adapterKey: "noop-inapp",
+          providerKey: "inapp-noop",
           payload: {
             channel: "inapp",
             recipient: { userId: "viewer-1", address: null, deviceToken: null },
@@ -122,6 +132,10 @@ describe("notification delivery runner service", () => {
           eventId: "event-1",
           channel: "inapp",
           adapterKey: "noop-inapp",
+          providerKey: "inapp-noop",
+          externalMessageId: "inapp-preview:event-1",
+          retryCategory: null,
+          providerStatusCode: "preview-ok",
           outcome: "sent",
           message: null
         }
@@ -173,9 +187,9 @@ describe("notification delivery runner service", () => {
       claimedAt: "2026-03-29T10:00:00.000Z",
       claimExpiresAt: "2026-03-29T10:10:00.000Z",
       items: [
-        { event: { id: "event-1", channel: "inapp", attemptCount: 3 }, adapterKey: "noop-inapp", payload: {} },
-        { event: { id: "event-2", channel: "email", attemptCount: 1 }, adapterKey: "noop-email", payload: {} },
-        { event: { id: "event-3", channel: "push", attemptCount: 1 }, adapterKey: "noop-push", payload: {} }
+        { event: { id: "event-1", channel: "inapp", attemptCount: 3 }, adapterKey: "noop-inapp", providerKey: "inapp-noop", payload: {} },
+        { event: { id: "event-2", channel: "email", attemptCount: 1 }, adapterKey: "noop-email", providerKey: "email-noop", payload: {} },
+        { event: { id: "event-3", channel: "push", attemptCount: 1 }, adapterKey: "noop-push", providerKey: "push-noop", payload: {} }
       ]
     });
     recordNotificationDeliveryRun.mockResolvedValue({
@@ -225,8 +239,46 @@ describe("notification delivery runner service", () => {
       retryableCount: 1,
       guardrailSkippedCount: 1
     });
+    expect(recordNotificationDeliveryAttemptLogs).toHaveBeenCalledWith({
+      runId: "run-2",
+      claimToken: "claim-2",
+      attempts: [
+        {
+          eventId: "event-1",
+          channel: "inapp",
+          adapterKey: "noop-inapp",
+          providerKey: "inapp-noop",
+          externalMessageId: null,
+          retryCategory: null,
+          providerStatusCode: null,
+          outcome: "guardrail_skipped",
+          message: "max-attempts-reached"
+        },
+        {
+          eventId: "event-2",
+          channel: "email",
+          adapterKey: "noop-email",
+          providerKey: "email-noop",
+          externalMessageId: null,
+          retryCategory: "temporary",
+          providerStatusCode: null,
+          outcome: "retryable",
+          message: "temporary-outage"
+        },
+        {
+          eventId: "event-3",
+          channel: "push",
+          adapterKey: "noop-push",
+          providerKey: "push-noop",
+          externalMessageId: null,
+          retryCategory: null,
+          providerStatusCode: null,
+          outcome: "failed",
+          message: "hard-failure"
+        }
+      ]
+    });
     expect(result.run.id).toBe("run-2");
-    expect(recordNotificationDeliveryAttemptLogs).toHaveBeenCalled();
   });
 
   it("uses the retry policy when no manual retry delay is provided", async () => {
@@ -251,6 +303,7 @@ describe("notification delivery runner service", () => {
         {
           event: { id: "event-4", channel: "email", attemptCount: 1 },
           adapterKey: "noop-email",
+          providerKey: "email-noop",
           payload: {}
         }
       ]
