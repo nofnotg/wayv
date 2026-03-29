@@ -116,6 +116,15 @@ export const notificationDeliveryOutcomeSchema = z.object({
   lastError: z.string().trim().max(500).optional()
 });
 
+export const notificationDeliveryRunSchema = notificationDeliveryClaimSchema.extend({
+  retryAfterMinutes: z.number().int().min(1).max(1440).optional()
+});
+
+export const notificationDeliveryControlSchema = z.object({
+  action: z.enum(["requeue", "release_expired_claim"]),
+  eventIds: z.array(z.string().uuid()).min(1).max(100)
+});
+
 export const notificationDebugStateFilterSchema = z
   .array(z.enum(notificationEventStateValues))
   .max(10);

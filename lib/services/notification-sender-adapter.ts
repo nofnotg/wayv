@@ -2,6 +2,7 @@ import type {
   NotificationChannel,
   NotificationDeliveryBatch,
   NotificationEvent,
+  NotificationSenderBatch,
   NotificationSenderBatchItem,
   NotificationSenderPayload
 } from "@/lib/domain/types";
@@ -62,7 +63,7 @@ export function getNotificationSenderAdapter(channel: NotificationChannel) {
 
 export function prepareNotificationDeliveryBatchForSender(
   batch: NotificationDeliveryBatch
-) {
+): NotificationSenderBatch {
   const items: NotificationSenderBatchItem[] = batch.events.map((event) => {
     const adapter = getNotificationSenderAdapter(event.channel);
     return {

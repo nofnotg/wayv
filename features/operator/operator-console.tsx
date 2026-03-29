@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { useRouter } from "next/navigation";
+
 import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
@@ -9,7 +11,9 @@ import type {
   ModerationAuditLog,
   ModerationReportListItem,
   ModerationStatus,
-  NotificationEvent
+  NotificationDeliveryControlAction,
+  NotificationEvent,
+  NotificationExecutionRunSummary
 } from "@/lib/domain/types";
 import {
   buildNotificationDeliveryAnalytics,
@@ -33,24 +37,61 @@ function groupAuditsByTargetType(audits: ModerationAuditLog[]) {
   };
 }
 
+function isClaimExpired(event: NotificationEvent, now = new Date()) {
+  return Boolean(
+    event.claimToken &&
+      event.claimExpiresAt &&
+      new Date(event.claimExpiresAt).getTime() <= now.getTime()
+  );
+}
+
 function getDeliveryLabel(event: NotificationEvent) {
   if (event.state === "pending") {
-    return "전달 준비";
+    return systemCopy.operator.deliveryLabels.ready;
   }
 
   if (event.state === "operational_only") {
-    return "운영 안내";
+    return systemCopy.notifications.stateLabels.operational_only;
   }
 
   if (event.state === "retryable") {
-    return "다시 시도 예정";
+    return systemCopy.operator.deliveryLabels.retryable;
   }
 
   if (event.state === "failed") {
-    return "전달 보류";
+    return systemCopy.operator.deliveryLabels.failed;
   }
 
-  return "전달됨";
+  return systemCopy.operator.deliveryLabels.sent;
+}
+
+function getDeliveryAction(
+  event: NotificationEvent
+):
+  | {
+      action: NotificationDeliveryControlAction;
+      label: string;
+    }
+  | null {
+  if (event.state === "failed" || event.state === "retryable") {
+    return {
+      action: "requeue",
+      label: systemCopy.operator.requeue
+    };
+  }
+
+  if (isClaimExpired(event)) {
+    return {
+      action: "release_expired_claim",
+      label: systemCopy.operator.releaseClaim
+    };
+  }
+
+  return null;
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  return response.json() as Promise<T>;
 }
 
 export function OperatorConsole({
@@ -59,8 +100,11 @@ export function OperatorConsole({
   initialDeliveryEvents,
   token
 }: OperatorConsoleProps) {
+  const router = useRouter();
   const [reports, setReports] = useState(initialReports);
   const [audits, setAudits] = useState(initialAudits);
+  const [deliveryEvents, setDeliveryEvents] = useState(initialDeliveryEvents);
+  const [runSummary, setRunSummary] = useState<NotificationExecutionRunSummary | null>(null);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
     Object.fromEntries(
       initialReports.map((report) => [report.id, report.targetStatus ?? "under_review"])
@@ -71,47 +115,63 @@ export function OperatorConsole({
 
   const groupedAudits = useMemo(() => groupAuditsByTargetType(audits), [audits]);
   const deliveryAnalytics = useMemo(
-    () => buildNotificationDeliveryAnalytics(initialDeliveryEvents),
-    [initialDeliveryEvents]
+    () => buildNotificationDeliveryAnalytics(deliveryEvents),
+    [deliveryEvents]
   );
   const deliveryGroups = useMemo(
     () => [
       {
         key: "ready",
-        title: "아직 보내지 않은 준비 이벤트",
-        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "ready")
+        title: systemCopy.operator.deliveryLabels.ready,
+        items: filterNotificationDeliveryEventsByScope(deliveryEvents, "ready")
       },
       {
         key: "claimed",
-        title: "지금 누군가 잡고 있는 배치",
-        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "claimed")
+        title: systemCopy.operator.deliveryLabels.claimed,
+        items: filterNotificationDeliveryEventsByScope(deliveryEvents, "claimed")
       },
       {
         key: "expired",
-        title: "다시 살펴볼 만료된 클레임",
-        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "expired_claims")
+        title: systemCopy.operator.deliveryLabels.expired,
+        items: filterNotificationDeliveryEventsByScope(deliveryEvents, "expired_claims")
       },
       {
         key: "retryable",
-        title: "다시 시도 대기",
-        items: filterNotificationDeliveryEventsByScope(
-          initialDeliveryEvents,
-          "retryable_backlog"
-        )
+        title: systemCopy.operator.deliveryLabels.retryable,
+        items: filterNotificationDeliveryEventsByScope(deliveryEvents, "retryable_backlog")
       },
       {
         key: "failed",
-        title: "최근 실패",
-        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "failed")
+        title: systemCopy.operator.deliveryLabels.failed,
+        items: filterNotificationDeliveryEventsByScope(deliveryEvents, "failed")
       },
       {
         key: "sent",
-        title: "최근 전달됨",
-        items: filterNotificationDeliveryEventsByScope(initialDeliveryEvents, "sent")
+        title: systemCopy.operator.deliveryLabels.sent,
+        items: filterNotificationDeliveryEventsByScope(deliveryEvents, "sent")
       }
     ],
-    [initialDeliveryEvents]
+    [deliveryEvents]
   );
+
+  const reloadDeliveryEvents = async () => {
+    const response = await fetch(
+      "/api/internal/debug/notification-delivery?limit=24&state=pending&state=operational_only&state=retryable&state=failed&state=sent",
+      {
+        headers: {
+          "x-cron-secret": token,
+          "x-operator-label": "operator-console"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("delivery-events-reload-failed");
+    }
+
+    const data = await readJson<{ events: NotificationEvent[] }>(response);
+    setDeliveryEvents(data.events);
+  };
 
   const updateReportStatus = (
     targetType: "post" | "comment",
@@ -139,28 +199,29 @@ export function OperatorConsole({
         return;
       }
 
-      const data = await response.json();
-      const moderation = data.moderation as {
-        previousStatus: ModerationStatus;
-        status: ModerationStatus;
-      };
+      const data = await readJson<{
+        moderation: {
+          previousStatus: ModerationStatus;
+          status: ModerationStatus;
+        };
+      }>(response);
 
       setReports((current) =>
         current.map((report) =>
           report.targetType === targetType && report.targetId === targetId
-            ? { ...report, targetStatus: moderation.status }
+            ? { ...report, targetStatus: data.moderation.status }
             : report
         )
       );
 
-      if (moderation.previousStatus !== moderation.status) {
+      if (data.moderation.previousStatus !== data.moderation.status) {
         setAudits((current) => [
           {
             id: `local-${targetType}-${targetId}-${Date.now()}`,
             targetType,
             targetId,
-            previousStatus: moderation.previousStatus,
-            nextStatus: moderation.status,
+            previousStatus: data.moderation.previousStatus,
+            nextStatus: data.moderation.status,
             actorLabel: "operator-console",
             createdAt: new Date().toISOString()
           },
@@ -169,6 +230,67 @@ export function OperatorConsole({
       }
 
       setMessage(systemCopy.operator.saved);
+      router.refresh();
+    });
+  };
+
+  const runBatch = () => {
+    startTransition(async () => {
+      const response = await fetch("/api/internal/delivery/run-batch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cron-secret": token,
+          "x-operator-label": "operator-console"
+        },
+        body: JSON.stringify({
+          limit: 6,
+          claimTtlMinutes: 10,
+          retryAfterMinutes: 30
+        })
+      });
+
+      if (!response.ok) {
+        setMessage(systemCopy.operator.error);
+        return;
+      }
+
+      const data = await readJson<{
+        summary: NotificationExecutionRunSummary;
+      }>(response);
+
+      setRunSummary(data.summary);
+      await reloadDeliveryEvents();
+      setMessage(systemCopy.operator.runBatchSaved);
+    });
+  };
+
+  const applyDeliveryControl = (
+    action: NotificationDeliveryControlAction,
+    eventId: string
+  ) => {
+    startTransition(async () => {
+      const response = await fetch("/api/internal/delivery/control", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cron-secret": token,
+          "x-operator-label": "operator-console"
+        },
+        body: JSON.stringify({
+          action,
+          eventIds: [eventId]
+        })
+      });
+
+      if (!response.ok) {
+        setMessage(systemCopy.operator.error);
+        return;
+      }
+
+      await reloadDeliveryEvents();
+      setMessage(systemCopy.operator.deliveryControlSaved);
+      router.refresh();
     });
   };
 
@@ -346,34 +468,70 @@ export function OperatorConsole({
         )}
       </SectionCard>
 
-      <SectionCard title="전달 실행 흐름">
+      <SectionCard title={systemCopy.operator.deliveryTitle}>
         <div className="flex flex-wrap gap-2">
-          <StatusChip label={`준비 ${deliveryAnalytics.readyCount}`} tone="quiet" />
-          <StatusChip label={`클레임 ${deliveryAnalytics.claimedCount}`} tone="quiet" />
-          <StatusChip label={`만료 ${deliveryAnalytics.expiredClaimCount}`} tone="quiet" />
-          <StatusChip label={`재시도 ${deliveryAnalytics.retryableCount}`} tone="quiet" />
-          <StatusChip label={`실패 ${deliveryAnalytics.failedCount}`} tone="quiet" />
-          <StatusChip label={`전달됨 ${deliveryAnalytics.sentCount}`} tone="quiet" />
+          <StatusChip label={`${systemCopy.operator.deliveryLabels.ready} ${deliveryAnalytics.readyCount}`} tone="quiet" />
+          <StatusChip label={`${systemCopy.operator.deliveryLabels.claimed} ${deliveryAnalytics.claimedCount}`} tone="quiet" />
+          <StatusChip label={`${systemCopy.operator.deliveryLabels.expired} ${deliveryAnalytics.expiredClaimCount}`} tone="quiet" />
+          <StatusChip label={`${systemCopy.operator.deliveryLabels.retryable} ${deliveryAnalytics.retryableCount}`} tone="quiet" />
+          <StatusChip label={`${systemCopy.operator.deliveryLabels.failed} ${deliveryAnalytics.failedCount}`} tone="quiet" />
+          <StatusChip label={`${systemCopy.operator.deliveryLabels.sent} ${deliveryAnalytics.sentCount}`} tone="quiet" />
         </div>
-        <div className="mt-4 grid gap-2 text-sm text-slate-700">
-          <p>
-            <span className="font-medium text-slate-900">최근 시도</span>{" "}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={runBatch}
+            className="rounded-full bg-slate-900 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {pending ? systemCopy.operator.runningBatch : systemCopy.operator.runBatch}
+          </button>
+          <span className="text-xs text-slate-500">
             {deliveryAnalytics.latestAttemptAt
-              ? formatDateTime(deliveryAnalytics.latestAttemptAt)
-              : "아직 없습니다."}
-          </p>
-          <p>
-            <span className="font-medium text-slate-900">평균 시도 횟수</span>{" "}
-            {deliveryAnalytics.averageAttemptCount}
-          </p>
+              ? `${systemCopy.operator.labels.attempt} ${formatDateTime(deliveryAnalytics.latestAttemptAt)}`
+              : `${systemCopy.operator.labels.attempt} 기록이 아직 없어요.`}
+          </span>
         </div>
       </SectionCard>
 
-      <SectionCard title="전달 준비와 결과">
-        {!initialDeliveryEvents.length ? (
-          <p className="text-sm leading-7 text-slate-600">
-            아직 살펴볼 전달 이벤트가 없습니다.
-          </p>
+      <SectionCard title={systemCopy.operator.runSummaryTitle}>
+        {!runSummary ? (
+          <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.runSummaryEmpty}</p>
+        ) : (
+          <div className="grid gap-3 text-sm text-slate-700">
+            <div className="flex flex-wrap gap-2">
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.claimed} ${runSummary.claimedCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.sent} ${runSummary.sentCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.failed} ${runSummary.failedCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.retryable} ${runSummary.retryableCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.guardrail} ${runSummary.guardrailSkippedCount}`}
+                tone="quiet"
+              />
+            </div>
+            <p>
+              <span className="font-medium text-slate-900">{systemCopy.operator.labels.claim}</span>{" "}
+              {runSummary.claimToken}
+            </p>
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title={systemCopy.operator.deliveryGroupsTitle}>
+        {!deliveryEvents.length ? (
+          <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.deliveryEmpty}</p>
         ) : (
           <div className="grid gap-5">
             {deliveryGroups.map((group) =>
@@ -384,41 +542,72 @@ export function OperatorConsole({
                     <span className="text-xs text-slate-500">{group.items.length}</span>
                   </div>
                   <div className="grid gap-3">
-                    {group.items.map((event) => (
-                      <article
-                        key={event.id}
-                        className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <StatusChip label={getDeliveryLabel(event)} tone="quiet" />
-                          {event.lane ? <StatusChip label={event.lane} tone="quiet" /> : null}
-                          <span className="text-xs text-slate-500">
-                            {formatDateTime(event.createdAt)}
-                          </span>
-                        </div>
-                        <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                          <p className="font-medium text-slate-900">{event.title}</p>
-                          <p>{event.body}</p>
-                          <p>
-                            <span className="font-medium text-slate-900">대상</span>{" "}
-                            {event.userId}
-                            {event.postId ? ` / ${event.postId}` : ""}
-                          </p>
-                          <p>
-                            <span className="font-medium text-slate-900">클레임</span>{" "}
-                            {event.claimToken ? "있음" : "없음"}
-                            {event.claimExpiresAt
-                              ? ` / ${formatDateTime(event.claimExpiresAt)}`
-                              : ""}
-                          </p>
-                          <p>
-                            <span className="font-medium text-slate-900">시도</span>{" "}
-                            {event.attemptCount ?? 0}
-                            {event.lastError ? ` / ${event.lastError}` : ""}
-                          </p>
-                        </div>
-                      </article>
-                    ))}
+                    {group.items.map((event) => {
+                      const control = getDeliveryAction(event);
+
+                      return (
+                        <article
+                          key={event.id}
+                          className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusChip label={getDeliveryLabel(event)} tone="quiet" />
+                            {event.lane ? (
+                              <StatusChip
+                                label={systemCopy.notifications.laneLabels[event.lane]}
+                                tone="quiet"
+                              />
+                            ) : null}
+                            <span className="text-xs text-slate-500">
+                              {formatDateTime(event.createdAt)}
+                            </span>
+                          </div>
+                          <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                            <p className="font-medium text-slate-900">{event.title}</p>
+                            <p>{event.body}</p>
+                            <p>
+                              <span className="font-medium text-slate-900">
+                                {systemCopy.operator.labels.target}
+                              </span>{" "}
+                              {event.userId}
+                              {event.postId ? ` / ${event.postId}` : ""}
+                            </p>
+                            <p>
+                              <span className="font-medium text-slate-900">
+                                {systemCopy.operator.labels.claim}
+                              </span>{" "}
+                              {event.claimToken ? "있음" : "없음"}
+                              {event.claimExpiresAt
+                                ? ` / ${formatDateTime(event.claimExpiresAt)}`
+                                : ""}
+                            </p>
+                            <p>
+                              <span className="font-medium text-slate-900">
+                                {systemCopy.operator.labels.attempt}
+                              </span>{" "}
+                              {event.attemptCount ?? 0}
+                              {event.lastError ? ` / ${event.lastError}` : ""}
+                            </p>
+                          </div>
+                          {control ? (
+                            <div className="mt-4">
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => applyDeliveryControl(control.action, event.id)}
+                                className="rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                              >
+                                {pending
+                                  ? control.action === "requeue"
+                                    ? systemCopy.operator.requeueing
+                                    : systemCopy.operator.releasingClaim
+                                  : control.label}
+                              </button>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null

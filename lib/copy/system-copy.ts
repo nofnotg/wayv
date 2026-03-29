@@ -201,6 +201,34 @@ export const systemCopy = {
     saving: "상태를 바꾸는 중이에요...",
     saved: "상태를 반영했어요.",
     error: "상태를 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요.",
+    deliveryTitle: "전달 실행 흐름",
+    deliveryGroupsTitle: "전달 준비 상태",
+    deliveryEmpty: "지금 살펴볼 전달 이벤트가 없어요.",
+    runBatch: "한 번 실행해 보기",
+    runningBatch: "실행 중이에요...",
+    runBatchSaved: "한 번의 실행 결과를 반영했어요.",
+    deliveryControlSaved: "전달 상태를 정리했어요.",
+    requeue: "다시 대기열에 두기",
+    requeueing: "다시 대기열에 두는 중이에요...",
+    releaseClaim: "만료된 클레임 풀기",
+    releasingClaim: "클레임을 정리하는 중이에요...",
+    runSummaryTitle: "마지막 실행 요약",
+    runSummaryEmpty: "아직 이 화면에서 실행한 배치가 없어요.",
+    runSummaryLabels: {
+      claimed: "가져온 이벤트",
+      sent: "전달 완료",
+      failed: "보류",
+      retryable: "다시 시도 예정",
+      guardrail: "가드레일로 멈춤"
+    },
+    deliveryLabels: {
+      ready: "전달 준비",
+      claimed: "지금 잡혀 있는 배치",
+      expired: "만료된 클레임",
+      retryable: "다시 시도 대기",
+      failed: "최근 보류",
+      sent: "최근 전달"
+    },
     actorFallback: "internal-token",
     labels: {
       postReport: "파도 신고",
@@ -210,7 +238,9 @@ export const systemCopy = {
       reason: "이유",
       note: "메모",
       actor: "변경 주체",
-      transition: "상태 변경"
+      transition: "상태 변경",
+      claim: "클레임",
+      attempt: "시도"
     },
     statusLabels: {
       active: "정상 노출",

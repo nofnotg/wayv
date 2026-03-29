@@ -424,6 +424,17 @@ export type NotificationDeliveryBatch = {
 
 export type NotificationDeliveryOutcome = "sent" | "failed" | "retryable";
 
+export type NotificationDeliveryControlAction =
+  | "requeue"
+  | "release_expired_claim";
+
+export type NotificationDeliveryControlSkipReason =
+  | "event_not_found"
+  | "not_requeueable"
+  | "max_attempts_reached"
+  | "claim_not_expired"
+  | "not_claimed";
+
 export type NotificationDeliveryScope =
   | "ready"
   | "claimed"
@@ -448,6 +459,13 @@ export type NotificationSenderBatchItem = {
   payload: NotificationSenderPayload;
 };
 
+export type NotificationSenderBatch = {
+  claimToken: string;
+  claimedAt: string;
+  claimExpiresAt: string;
+  items: NotificationSenderBatchItem[];
+};
+
 export type NotificationDeliveryAnalytics = {
   readyCount: number;
   claimedCount: number;
@@ -457,4 +475,29 @@ export type NotificationDeliveryAnalytics = {
   retryableCount: number;
   latestAttemptAt: string | null;
   averageAttemptCount: number;
+};
+
+export type NotificationDeliveryControlResult = {
+  action: NotificationDeliveryControlAction;
+  updated: NotificationEvent[];
+  skipped: Array<{
+    eventId: string;
+    reason: NotificationDeliveryControlSkipReason;
+  }>;
+};
+
+export type NotificationExecutionRunResult = {
+  eventId: string;
+  outcome: NotificationDeliveryOutcome | "guardrail_skipped";
+  message: string | null;
+};
+
+export type NotificationExecutionRunSummary = {
+  claimToken: string;
+  claimedCount: number;
+  sentCount: number;
+  failedCount: number;
+  retryableCount: number;
+  guardrailSkippedCount: number;
+  emptyBatch: boolean;
 };

@@ -3,9 +3,11 @@ import { randomUUID } from "crypto";
 import type {
   NotificationChannel,
   NotificationDeliveryBatch,
+  NotificationDeliveryControlResult,
   NotificationDeliveryOutcome,
   NotificationEvent,
-  NotificationEventState
+  NotificationEventState,
+  NotificationEventType
 } from "@/lib/domain/types";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
 
@@ -77,6 +79,47 @@ function sanitizeRetryAfterMinutes(value?: number) {
   return Math.max(1, Math.min(value ?? 15, 24 * 60));
 }
 
+export const NOTIFICATION_DELIVERY_MAX_ATTEMPTS = 3;
+
+function isOperationalNotificationType(type: NotificationEventType) {
+  return type === "operational_notice" || type === "safety_notice";
+}
+
+function resolveRequeueState(row: Pick<EventRow, "type">): NotificationEventState {
+  return isOperationalNotificationType(row.type) ? "operational_only" : "pending";
+}
+
+function hasEventReachedMaxAttempts(row: Pick<EventRow, "attempt_count">) {
+  return (row.attempt_count ?? 0) >= NOTIFICATION_DELIVERY_MAX_ATTEMPTS;
+}
+
+function isClaimExpired(row: Pick<EventRow, "claim_expires_at">, now = new Date()) {
+  if (!row.claim_expires_at) {
+    return false;
+  }
+
+  return new Date(row.claim_expires_at).getTime() <= now.getTime();
+}
+
+async function loadNotificationEventsByIds(eventIds: string[]) {
+  const uniqueIds = [...new Set(eventIds.filter(Boolean))];
+  if (!uniqueIds.length) {
+    return [];
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("notification_events")
+    .select("*")
+    .in("id", uniqueIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row) => row as EventRow);
+}
+
 export class NotificationDeliveryClaimError extends Error {
   constructor(
     public code:
@@ -90,6 +133,12 @@ export class NotificationDeliveryClaimError extends Error {
     super(code);
     this.name = "NotificationDeliveryClaimError";
   }
+}
+
+export function hasNotificationReachedMaxAttempts(
+  event: Pick<NotificationEvent, "attemptCount">
+) {
+  return (event.attemptCount ?? 0) >= NOTIFICATION_DELIVERY_MAX_ATTEMPTS;
 }
 
 export async function listNotificationDeliveryEvents(input?: {
@@ -367,4 +416,116 @@ export async function markNotificationBatchRetryable(input: {
     retryAfterMinutes: input.retryAfterMinutes,
     lastError: input.lastError
   });
+}
+
+export async function requeueNotificationDeliveryEvents(input: {
+  eventIds: string[];
+}): Promise<NotificationDeliveryControlResult> {
+  const rows = await loadNotificationEventsByIds(input.eventIds);
+  const requestedIds = [...new Set(input.eventIds.filter(Boolean))];
+  const supabase = createAdminSupabaseClient();
+  const nowIso = new Date().toISOString();
+  const updated: NotificationEvent[] = [];
+  const skipped: NotificationDeliveryControlResult["skipped"] = [];
+
+  const foundIds = new Set(rows.map((row) => row.id));
+  for (const eventId of requestedIds) {
+    if (!foundIds.has(eventId)) {
+      skipped.push({ eventId, reason: "event_not_found" });
+    }
+  }
+
+  for (const row of rows) {
+    if (row.state !== "failed" && row.state !== "retryable") {
+      skipped.push({ eventId: row.id, reason: "not_requeueable" });
+      continue;
+    }
+
+    if (hasEventReachedMaxAttempts(row)) {
+      skipped.push({ eventId: row.id, reason: "max_attempts_reached" });
+      continue;
+    }
+
+    const { data, error } = await supabase
+      .from("notification_events")
+      .update({
+        state: resolveRequeueState(row),
+        claim_token: null,
+        claimed_at: null,
+        claim_expires_at: null,
+        next_retry_at: null,
+        last_error: null,
+        updated_at: nowIso
+      })
+      .eq("id", row.id)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      throw new Error(error?.message ?? "notification-requeue-failed");
+    }
+
+    updated.push(mapEventRow(data as EventRow));
+  }
+
+  return {
+    action: "requeue",
+    updated,
+    skipped
+  };
+}
+
+export async function releaseExpiredNotificationClaims(input: {
+  eventIds: string[];
+}): Promise<NotificationDeliveryControlResult> {
+  const rows = await loadNotificationEventsByIds(input.eventIds);
+  const requestedIds = [...new Set(input.eventIds.filter(Boolean))];
+  const supabase = createAdminSupabaseClient();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const updated: NotificationEvent[] = [];
+  const skipped: NotificationDeliveryControlResult["skipped"] = [];
+
+  const foundIds = new Set(rows.map((row) => row.id));
+  for (const eventId of requestedIds) {
+    if (!foundIds.has(eventId)) {
+      skipped.push({ eventId, reason: "event_not_found" });
+    }
+  }
+
+  for (const row of rows) {
+    if (!row.claim_token) {
+      skipped.push({ eventId: row.id, reason: "not_claimed" });
+      continue;
+    }
+
+    if (!isClaimExpired(row, now)) {
+      skipped.push({ eventId: row.id, reason: "claim_not_expired" });
+      continue;
+    }
+
+    const { data, error } = await supabase
+      .from("notification_events")
+      .update({
+        claim_token: null,
+        claimed_at: null,
+        claim_expires_at: null,
+        updated_at: nowIso
+      })
+      .eq("id", row.id)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      throw new Error(error?.message ?? "notification-release-claim-failed");
+    }
+
+    updated.push(mapEventRow(data as EventRow));
+  }
+
+  return {
+    action: "release_expired_claim",
+    updated,
+    skipped
+  };
 }

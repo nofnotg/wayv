@@ -451,4 +451,100 @@ describe("notification delivery service", () => {
       code: "claim_expired"
     } satisfies Partial<InstanceType<typeof NotificationDeliveryClaimError>>);
   });
+
+  it("requeues failed or retryable events back to a deliverable state", async () => {
+    const { requeueNotificationDeliveryEvents } = await import(
+      "../../lib/services/notification-delivery-service"
+    );
+
+    const failed = state.notification_events.find(
+      (event) => event.id === "55555555-5555-4555-8555-555555555555"
+    );
+    if (failed) {
+      failed.state = "failed";
+      failed.read_at = null;
+      failed.sent_at = null;
+      failed.attempt_count = 1;
+      failed.last_error = "temporary-provider-error";
+    }
+
+    const result = await requeueNotificationDeliveryEvents({
+      eventIds: [
+        "33333333-3333-4333-8333-333333333333",
+        "55555555-5555-4555-8555-555555555555"
+      ]
+    });
+
+    expect(result.updated).toHaveLength(2);
+    expect(result.updated.map((event) => event.state)).toEqual(["pending", "pending"]);
+    expect(result.skipped).toHaveLength(0);
+  });
+
+  it("skips requeue when the event has already reached the max attempt guardrail", async () => {
+    const { requeueNotificationDeliveryEvents, NOTIFICATION_DELIVERY_MAX_ATTEMPTS } =
+      await import("../../lib/services/notification-delivery-service");
+
+    const retryable = state.notification_events.find(
+      (event) => event.id === "33333333-3333-4333-8333-333333333333"
+    );
+    if (retryable) {
+      retryable.state = "retryable";
+      retryable.attempt_count = NOTIFICATION_DELIVERY_MAX_ATTEMPTS;
+    }
+
+    const result = await requeueNotificationDeliveryEvents({
+      eventIds: ["33333333-3333-4333-8333-333333333333"]
+    });
+
+    expect(result.updated).toHaveLength(0);
+    expect(result.skipped).toEqual([
+      {
+        eventId: "33333333-3333-4333-8333-333333333333",
+        reason: "max_attempts_reached"
+      }
+    ]);
+  });
+
+  it("releases only expired claims back to an unclaimed state", async () => {
+    const { releaseExpiredNotificationClaims } = await import(
+      "../../lib/services/notification-delivery-service"
+    );
+
+    const expired = state.notification_events.find(
+      (event) => event.id === "11111111-1111-4111-8111-111111111111"
+    );
+    if (expired) {
+      expired.claim_token = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+      expired.claimed_at = "2026-03-29T10:00:00.000Z";
+      expired.claim_expires_at = "2020-01-01T00:00:00.000Z";
+    }
+
+    const active = state.notification_events.find(
+      (event) => event.id === "22222222-2222-4222-8222-222222222222"
+    );
+    if (active) {
+      active.claim_token = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+      active.claimed_at = "2026-03-29T10:00:00.000Z";
+      active.claim_expires_at = "2999-01-01T00:00:00.000Z";
+    }
+
+    const result = await releaseExpiredNotificationClaims({
+      eventIds: [
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222"
+      ]
+    });
+
+    expect(result.updated).toHaveLength(1);
+    expect(result.updated[0]).toMatchObject({
+      id: "11111111-1111-4111-8111-111111111111",
+      claimToken: null
+    });
+    expect(result.skipped).toEqual([
+      {
+        eventId: "22222222-2222-4222-8222-222222222222",
+        reason: "claim_not_expired"
+      }
+    ]);
+  });
 });
