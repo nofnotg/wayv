@@ -3,6 +3,7 @@ import type {
   NotificationExecutionRunResult,
   NotificationExecutionRunSummary
 } from "@/lib/domain/types";
+import { recordNotificationDeliveryAttemptLogs } from "@/lib/services/notification-delivery-attempt-log-service";
 import { recordNotificationDeliveryRun } from "@/lib/services/notification-delivery-run-history-service";
 import {
   NOTIFICATION_DELIVERY_MAX_ATTEMPTS,
@@ -86,6 +87,8 @@ export async function runNotificationDeliveryBatch(
       guardrailSkippedCount += 1;
       results.push({
         eventId,
+        channel: item.event.channel,
+        adapterKey: item.adapterKey,
         outcome: "guardrail_skipped",
         message: "max-attempts-reached"
       });
@@ -102,6 +105,8 @@ export async function runNotificationDeliveryBatch(
       sentCount += 1;
       results.push({
         eventId,
+        channel: item.event.channel,
+        adapterKey: item.adapterKey,
         outcome: "sent",
         message: null
       });
@@ -123,6 +128,8 @@ export async function runNotificationDeliveryBatch(
         retryableCount += 1;
         results.push({
           eventId,
+          channel: item.event.channel,
+          adapterKey: item.adapterKey,
           outcome: "retryable",
           message
         });
@@ -137,6 +144,8 @@ export async function runNotificationDeliveryBatch(
       failedCount += 1;
       results.push({
         eventId,
+        channel: item.event.channel,
+        adapterKey: item.adapterKey,
         outcome: "failed",
         message
       });
@@ -157,6 +166,11 @@ export async function runNotificationDeliveryBatch(
   const run = await recordNotificationDeliveryRun({
     requestedLimit: input.limit,
     summary
+  });
+  await recordNotificationDeliveryAttemptLogs({
+    runId: run.id,
+    claimToken: batch.claimToken,
+    attempts: results
   });
 
   return {

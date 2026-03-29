@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
   ModerationAuditLog,
+  NotificationDeliveryRunDetail,
   NotificationDeliveryRunRecord,
   ModerationReportListItem,
   ModerationStatus,
@@ -108,6 +109,10 @@ export function OperatorConsole({
   const [audits, setAudits] = useState(initialAudits);
   const [deliveryEvents, setDeliveryEvents] = useState(initialDeliveryEvents);
   const [deliveryRuns, setDeliveryRuns] = useState(initialDeliveryRuns);
+  const [selectedRunDetail, setSelectedRunDetail] = useState<NotificationDeliveryRunDetail | null>(
+    null
+  );
+  const [runDetailLoading, setRunDetailLoading] = useState(false);
   const [runSummary, setRunSummary] = useState<NotificationExecutionRunSummary | null>(null);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
     Object.fromEntries(
@@ -191,6 +196,28 @@ export function OperatorConsole({
 
     const data = await readJson<{ runs: NotificationDeliveryRunRecord[] }>(response);
     setDeliveryRuns(data.runs);
+  };
+
+  const loadRunDetail = async (runId: string) => {
+    setRunDetailLoading(true);
+
+    try {
+      const response = await fetch(`/api/internal/debug/notification-delivery-runs/${runId}`, {
+        headers: {
+          "x-cron-secret": token,
+          "x-operator-label": "operator-console"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("delivery-run-detail-load-failed");
+      }
+
+      const data = await readJson<NotificationDeliveryRunDetail>(response);
+      setSelectedRunDetail(data);
+    } finally {
+      setRunDetailLoading(false);
+    }
   };
 
   const updateReportStatus = (
@@ -283,6 +310,7 @@ export function OperatorConsole({
       setRunSummary(data.summary);
       setDeliveryRuns((current) => [data.run, ...current].slice(0, 8));
       await reloadDeliveryEvents();
+      await loadRunDetail(data.run.id);
       setMessage(systemCopy.operator.runBatchSaved);
     });
   };
@@ -591,8 +619,100 @@ export function OperatorConsole({
                   </span>{" "}
                   {run.claimToken}
                 </p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    disabled={pending || runDetailLoading}
+                    onClick={() => {
+                      void loadRunDetail(run.id);
+                    }}
+                    className="rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    {runDetailLoading &&
+                    selectedRunDetail?.run.id === run.id
+                      ? systemCopy.operator.runDetailLoading
+                      : systemCopy.operator.viewRunDetail}
+                  </button>
+                </div>
               </article>
             ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title={systemCopy.operator.runDetailTitle}>
+        {!selectedRunDetail ? (
+          <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.runDetailEmpty}</p>
+        ) : (
+          <div className="grid gap-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.claimed} ${selectedRunDetail.run.claimedCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.sent} ${selectedRunDetail.run.sentCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.failed} ${selectedRunDetail.run.failedCount}`}
+                tone="quiet"
+              />
+              <StatusChip
+                label={`${systemCopy.operator.runSummaryLabels.retryable} ${selectedRunDetail.run.retryableCount}`}
+                tone="quiet"
+              />
+            </div>
+            {!selectedRunDetail.attempts.length ? (
+              <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.runDetailEmpty}</p>
+            ) : (
+              <div className="grid gap-3">
+                {selectedRunDetail.attempts.map((attempt) => (
+                  <article
+                    key={attempt.id}
+                    className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusChip
+                        label={systemCopy.operator.attemptOutcomeLabels[attempt.outcome]}
+                        tone={attempt.outcome === "failed" ? "active" : "quiet"}
+                      />
+                      <StatusChip label={attempt.channel} tone="quiet" />
+                      <StatusChip label={attempt.adapterKey} tone="quiet" />
+                      <span className="text-xs text-slate-500">
+                        {formatDateTime(attempt.createdAt)}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                      <p>
+                        <span className="font-medium text-slate-900">
+                          {systemCopy.operator.labels.target}
+                        </span>{" "}
+                        {attempt.eventId}
+                      </p>
+                      <p>
+                        <span className="font-medium text-slate-900">
+                          {systemCopy.operator.labels.outcome}
+                        </span>{" "}
+                        {systemCopy.operator.attemptOutcomeLabels[attempt.outcome]}
+                      </p>
+                      <p>
+                        <span className="font-medium text-slate-900">
+                          {systemCopy.operator.labels.adapter}
+                        </span>{" "}
+                        {attempt.adapterKey}
+                      </p>
+                      <p>
+                        <span className="font-medium text-slate-900">
+                          {systemCopy.operator.labels.message}
+                        </span>{" "}
+                        {attempt.message ?? systemCopy.operator.attemptMessageEmpty}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </SectionCard>

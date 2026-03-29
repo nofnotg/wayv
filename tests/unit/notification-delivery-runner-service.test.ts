@@ -7,6 +7,7 @@ const markNotificationBatchRetryable = vi.fn();
 const getNotificationSenderAdapter = vi.fn();
 const prepareNotificationDeliveryBatchForSender = vi.fn();
 const recordNotificationDeliveryRun = vi.fn();
+const recordNotificationDeliveryAttemptLogs = vi.fn();
 
 vi.mock("@/lib/services/notification-delivery-service", () => ({
   NOTIFICATION_DELIVERY_MAX_ATTEMPTS: 3,
@@ -25,6 +26,10 @@ vi.mock("@/lib/services/notification-sender-adapter", () => ({
 
 vi.mock("@/lib/services/notification-delivery-run-history-service", () => ({
   recordNotificationDeliveryRun
+}));
+
+vi.mock("@/lib/services/notification-delivery-attempt-log-service", () => ({
+  recordNotificationDeliveryAttemptLogs
 }));
 
 describe("notification delivery runner service", () => {
@@ -94,6 +99,7 @@ describe("notification delivery runner service", () => {
       retryableCount: 0,
       guardrailSkippedCount: 0
     });
+    recordNotificationDeliveryAttemptLogs.mockResolvedValue([]);
 
     const { runNotificationDeliveryBatch } = await import(
       "../../lib/services/notification-delivery-runner-service"
@@ -108,6 +114,19 @@ describe("notification delivery runner service", () => {
       claimToken: "claim-1"
     });
     expect(recordNotificationDeliveryRun).toHaveBeenCalled();
+    expect(recordNotificationDeliveryAttemptLogs).toHaveBeenCalledWith({
+      runId: "run-1",
+      claimToken: "claim-1",
+      attempts: [
+        {
+          eventId: "event-1",
+          channel: "inapp",
+          adapterKey: "noop-inapp",
+          outcome: "sent",
+          message: null
+        }
+      ]
+    });
     expect(result.summary).toMatchObject({
       claimedCount: 1,
       sentCount: 1,
@@ -170,6 +189,7 @@ describe("notification delivery runner service", () => {
       retryableCount: 1,
       guardrailSkippedCount: 1
     });
+    recordNotificationDeliveryAttemptLogs.mockResolvedValue([]);
 
     const { runNotificationDeliveryBatch } = await import(
       "../../lib/services/notification-delivery-runner-service"
@@ -206,6 +226,7 @@ describe("notification delivery runner service", () => {
       guardrailSkippedCount: 1
     });
     expect(result.run.id).toBe("run-2");
+    expect(recordNotificationDeliveryAttemptLogs).toHaveBeenCalled();
   });
 
   it("uses the retry policy when no manual retry delay is provided", async () => {
@@ -245,6 +266,7 @@ describe("notification delivery runner service", () => {
       retryableCount: 1,
       guardrailSkippedCount: 0
     });
+    recordNotificationDeliveryAttemptLogs.mockResolvedValue([]);
 
     const { runNotificationDeliveryBatch } = await import(
       "../../lib/services/notification-delivery-runner-service"

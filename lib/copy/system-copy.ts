@@ -218,12 +218,23 @@ export const systemCopy = {
     runSummaryEmpty: "아직 이 화면에서 실행한 배치가 없어요.",
     runHistoryTitle: "최근 실행 기록",
     runHistoryEmpty: "아직 남아 있는 실행 기록이 없어요.",
+    runDetailTitle: "선택한 실행 상세",
+    runDetailEmpty: "실행 기록 하나를 고르면 여기에서 시도별 흐름을 볼 수 있어요.",
+    runDetailLoading: "실행 상세를 불러오는 중이에요...",
+    viewRunDetail: "이 실행 살펴보기",
+    attemptMessageEmpty: "남겨진 추가 메모가 없어요.",
     runSummaryLabels: {
       claimed: "가져온 이벤트",
       sent: "전달 완료",
       failed: "보류",
       retryable: "다시 시도 예정",
       guardrail: "가드레일로 멈춤"
+    },
+    attemptOutcomeLabels: {
+      sent: "전달 완료",
+      failed: "보류",
+      retryable: "다시 시도 예정",
+      guardrail_skipped: "가드레일로 멈춤"
     },
     deliveryLabels: {
       ready: "전달 준비",
@@ -244,7 +255,10 @@ export const systemCopy = {
       actor: "변경 주체",
       transition: "상태 변경",
       claim: "클레임",
-      attempt: "시도"
+      attempt: "시도",
+      adapter: "어댑터",
+      outcome: "결과",
+      message: "메시지"
     },
     statusLabels: {
       active: "정상 노출",

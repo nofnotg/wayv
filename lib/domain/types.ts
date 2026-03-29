@@ -505,6 +505,8 @@ export type NotificationDeliveryControlResult = {
 
 export type NotificationExecutionRunResult = {
   eventId: string;
+  channel: NotificationChannel;
+  adapterKey: string;
   outcome: NotificationDeliveryOutcome | "guardrail_skipped";
   message: string | null;
 };
@@ -535,4 +537,21 @@ export type NotificationDeliveryRunRecord = {
 export type NotificationRetryPolicyDecision = {
   retryAfterMinutes: number;
   maxAttempts: number;
+};
+
+export type NotificationDeliveryAttemptLog = {
+  id: string;
+  runId: string;
+  claimToken: string;
+  eventId: string;
+  channel: NotificationChannel;
+  adapterKey: string;
+  outcome: NotificationDeliveryOutcome | "guardrail_skipped";
+  message: string | null;
+  createdAt: string;
+};
+
+export type NotificationDeliveryRunDetail = {
+  run: NotificationDeliveryRunRecord;
+  attempts: NotificationDeliveryAttemptLog[];
 };

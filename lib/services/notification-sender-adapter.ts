@@ -1,80 +1,18 @@
 import type {
   NotificationChannel,
   NotificationDeliveryBatch,
-  NotificationEvent,
   NotificationSenderBatch,
-  NotificationSenderBatchItem,
-  NotificationSenderPayload,
-  NotificationSenderPreviewResult
+  NotificationSenderBatchItem
 } from "@/lib/domain/types";
-
-export type NotificationSenderAdapter = {
-  adapterKey: string;
-  channel: NotificationChannel;
-  buildPayload(event: NotificationEvent, claimToken: string): NotificationSenderPayload;
-  previewSend(item: NotificationSenderBatchItem): Promise<NotificationSenderPreviewResult>;
-};
-
-function buildBasePayload(
-  event: NotificationEvent,
-  claimToken: string
-): NotificationSenderPayload {
-  return {
-    channel: event.channel,
-    recipient: {
-      userId: event.userId,
-      address: null,
-      deviceToken: null
-    },
-    content: {
-      title: event.title,
-      body: event.body
-    },
-    context: {
-      eventId: event.id,
-      eventType: event.type,
-      postId: event.postId ?? null,
-      lane: event.lane ?? null,
-      claimToken
-    }
-  };
-}
-
-function createNoopSenderAdapter(
-  channel: NotificationChannel,
-  adapterKey: string
-): NotificationSenderAdapter {
-  return {
-    adapterKey,
-    channel,
-    buildPayload(event, claimToken) {
-      const payload = buildBasePayload(event, claimToken);
-
-      if (channel === "email") {
-        payload.recipient.address = `${event.userId}@pending.local`;
-      }
-
-      if (channel === "push") {
-        payload.recipient.deviceToken = `pending:${event.userId}`;
-      }
-
-      return payload;
-    },
-    async previewSend(item) {
-      return {
-        accepted: true,
-        channel,
-        adapterKey,
-        payload: item.payload
-      };
-    }
-  };
-}
+import type { NotificationSenderAdapter } from "@/lib/services/notification-sender-contract";
+import { emailNoopSenderAdapter } from "@/lib/services/notification-senders/email-noop-sender";
+import { inappNoopSenderAdapter } from "@/lib/services/notification-senders/inapp-noop-sender";
+import { pushNoopSenderAdapter } from "@/lib/services/notification-senders/push-noop-sender";
 
 const senderAdapters: Record<NotificationChannel, NotificationSenderAdapter> = {
-  inapp: createNoopSenderAdapter("inapp", "noop-inapp"),
-  email: createNoopSenderAdapter("email", "noop-email"),
-  push: createNoopSenderAdapter("push", "noop-push")
+  inapp: inappNoopSenderAdapter,
+  email: emailNoopSenderAdapter,
+  push: pushNoopSenderAdapter
 };
 
 export function getNotificationSenderAdapter(channel: NotificationChannel) {
