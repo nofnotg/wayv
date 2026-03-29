@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     ok: true,
     batch: result.batch,
     results: result.results,
-    summary: result.summary
+    summary: result.summary,
+    run: result.run
   });
 }

@@ -480,6 +480,31 @@ describe("notification delivery service", () => {
     expect(result.skipped).toHaveLength(0);
   });
 
+  it("supports batch requeue with mixed valid and invalid states", async () => {
+    const { requeueNotificationDeliveryEvents } = await import(
+      "../../lib/services/notification-delivery-service"
+    );
+
+    const result = await requeueNotificationDeliveryEvents({
+      eventIds: [
+        "33333333-3333-4333-8333-333333333333",
+        "55555555-5555-4555-8555-555555555555"
+      ]
+    });
+
+    expect(result.updated).toHaveLength(1);
+    expect(result.updated[0]).toMatchObject({
+      id: "33333333-3333-4333-8333-333333333333",
+      state: "pending"
+    });
+    expect(result.skipped).toEqual([
+      {
+        eventId: "55555555-5555-4555-8555-555555555555",
+        reason: "not_requeueable"
+      }
+    ]);
+  });
+
   it("skips requeue when the event has already reached the max attempt guardrail", async () => {
     const { requeueNotificationDeliveryEvents, NOTIFICATION_DELIVERY_MAX_ATTEMPTS } =
       await import("../../lib/services/notification-delivery-service");

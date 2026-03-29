@@ -36,12 +36,24 @@ describe("notification delivery runner and control routes", () => {
       results: [],
       summary: {
         claimToken: "claim-1",
+        ranAt: "2026-03-29T10:00:00.000Z",
         claimedCount: 2,
         sentCount: 2,
         failedCount: 0,
         retryableCount: 0,
         guardrailSkippedCount: 0,
         emptyBatch: false
+      },
+      run: {
+        id: "run-1",
+        claimToken: "claim-1",
+        ranAt: "2026-03-29T10:00:00.000Z",
+        requestedLimit: 4,
+        claimedCount: 2,
+        sentCount: 2,
+        failedCount: 0,
+        retryableCount: 0,
+        guardrailSkippedCount: 0
       }
     });
     const { POST } = await import("../../app/api/internal/delivery/run-batch/route");

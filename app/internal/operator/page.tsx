@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
 import { isInternalAccessTokenValid } from "@/lib/services/internal-auth-service";
 import {
   listModerationAuditLogs,
@@ -31,13 +32,14 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     );
   }
 
-  const [reports, audits, deliveryEvents] = await Promise.all([
+  const [reports, audits, deliveryEvents, deliveryRuns] = await Promise.all([
     listModerationReports(50),
     listModerationAuditLogs(20),
     listNotificationDeliveryEvents({
       limit: 24,
       states: ["pending", "operational_only", "retryable", "failed", "sent"]
-    })
+    }),
+    listNotificationDeliveryRuns(8)
   ]);
   const authorizedToken = token as string;
 
@@ -51,6 +53,7 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
         initialReports={reports}
         initialAudits={audits}
         initialDeliveryEvents={deliveryEvents}
+        initialDeliveryRuns={deliveryRuns}
         token={authorizedToken}
       />
     </div>

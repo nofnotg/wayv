@@ -444,18 +444,28 @@ export type NotificationDeliveryScope =
   | "failed";
 
 export type NotificationSenderPayload = {
-  eventId: string;
   channel: NotificationChannel;
-  targetUserId: string;
-  title: string;
-  body: string;
-  postId: string | null;
-  lane: NotificationCandidateLane | null;
-  claimToken: string;
+  recipient: {
+    userId: string;
+    address: string | null;
+    deviceToken: string | null;
+  };
+  content: {
+    title: string;
+    body: string;
+  };
+  context: {
+    eventId: string;
+    eventType: NotificationEventType;
+    postId: string | null;
+    lane: NotificationCandidateLane | null;
+    claimToken: string;
+  };
 };
 
 export type NotificationSenderBatchItem = {
   event: NotificationEvent;
+  adapterKey: string;
   payload: NotificationSenderPayload;
 };
 
@@ -464,6 +474,13 @@ export type NotificationSenderBatch = {
   claimedAt: string;
   claimExpiresAt: string;
   items: NotificationSenderBatchItem[];
+};
+
+export type NotificationSenderPreviewResult = {
+  accepted: true;
+  channel: NotificationChannel;
+  adapterKey: string;
+  payload: NotificationSenderPayload;
 };
 
 export type NotificationDeliveryAnalytics = {
@@ -494,10 +511,28 @@ export type NotificationExecutionRunResult = {
 
 export type NotificationExecutionRunSummary = {
   claimToken: string;
+  ranAt: string;
   claimedCount: number;
   sentCount: number;
   failedCount: number;
   retryableCount: number;
   guardrailSkippedCount: number;
   emptyBatch: boolean;
+};
+
+export type NotificationDeliveryRunRecord = {
+  id: string;
+  claimToken: string;
+  ranAt: string;
+  requestedLimit: number | null;
+  claimedCount: number;
+  sentCount: number;
+  failedCount: number;
+  retryableCount: number;
+  guardrailSkippedCount: number;
+};
+
+export type NotificationRetryPolicyDecision = {
+  retryAfterMinutes: number;
+  maxAttempts: number;
 };

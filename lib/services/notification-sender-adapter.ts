@@ -4,47 +4,67 @@ import type {
   NotificationEvent,
   NotificationSenderBatch,
   NotificationSenderBatchItem,
-  NotificationSenderPayload
+  NotificationSenderPayload,
+  NotificationSenderPreviewResult
 } from "@/lib/domain/types";
 
 export type NotificationSenderAdapter = {
+  adapterKey: string;
   channel: NotificationChannel;
   buildPayload(event: NotificationEvent, claimToken: string): NotificationSenderPayload;
-  previewSend(item: NotificationSenderBatchItem): Promise<{
-    accepted: true;
-    channel: NotificationChannel;
-    payload: NotificationSenderPayload;
-  }>;
+  previewSend(item: NotificationSenderBatchItem): Promise<NotificationSenderPreviewResult>;
 };
 
-function buildNotificationSenderPayload(
+function buildBasePayload(
   event: NotificationEvent,
   claimToken: string
 ): NotificationSenderPayload {
   return {
-    eventId: event.id,
     channel: event.channel,
-    targetUserId: event.userId,
-    title: event.title,
-    body: event.body,
-    postId: event.postId ?? null,
-    lane: event.lane ?? null,
-    claimToken
+    recipient: {
+      userId: event.userId,
+      address: null,
+      deviceToken: null
+    },
+    content: {
+      title: event.title,
+      body: event.body
+    },
+    context: {
+      eventId: event.id,
+      eventType: event.type,
+      postId: event.postId ?? null,
+      lane: event.lane ?? null,
+      claimToken
+    }
   };
 }
 
 function createNoopSenderAdapter(
-  channel: NotificationChannel
+  channel: NotificationChannel,
+  adapterKey: string
 ): NotificationSenderAdapter {
   return {
+    adapterKey,
     channel,
     buildPayload(event, claimToken) {
-      return buildNotificationSenderPayload(event, claimToken);
+      const payload = buildBasePayload(event, claimToken);
+
+      if (channel === "email") {
+        payload.recipient.address = `${event.userId}@pending.local`;
+      }
+
+      if (channel === "push") {
+        payload.recipient.deviceToken = `pending:${event.userId}`;
+      }
+
+      return payload;
     },
     async previewSend(item) {
       return {
         accepted: true,
         channel,
+        adapterKey,
         payload: item.payload
       };
     }
@@ -52,9 +72,9 @@ function createNoopSenderAdapter(
 }
 
 const senderAdapters: Record<NotificationChannel, NotificationSenderAdapter> = {
-  inapp: createNoopSenderAdapter("inapp"),
-  email: createNoopSenderAdapter("email"),
-  push: createNoopSenderAdapter("push")
+  inapp: createNoopSenderAdapter("inapp", "noop-inapp"),
+  email: createNoopSenderAdapter("email", "noop-email"),
+  push: createNoopSenderAdapter("push", "noop-push")
 };
 
 export function getNotificationSenderAdapter(channel: NotificationChannel) {
@@ -68,6 +88,7 @@ export function prepareNotificationDeliveryBatchForSender(
     const adapter = getNotificationSenderAdapter(event.channel);
     return {
       event,
+      adapterKey: adapter.adapterKey,
       payload: adapter.buildPayload(event, batch.claimToken)
     };
   });

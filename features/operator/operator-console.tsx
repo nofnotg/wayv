@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
   ModerationAuditLog,
+  NotificationDeliveryRunRecord,
   ModerationReportListItem,
   ModerationStatus,
   NotificationDeliveryControlAction,
@@ -25,6 +26,7 @@ type OperatorConsoleProps = {
   initialReports: ModerationReportListItem[];
   initialAudits: ModerationAuditLog[];
   initialDeliveryEvents: NotificationEvent[];
+  initialDeliveryRuns: NotificationDeliveryRunRecord[];
   token: string;
 };
 
@@ -98,12 +100,14 @@ export function OperatorConsole({
   initialReports,
   initialAudits,
   initialDeliveryEvents,
+  initialDeliveryRuns,
   token
 }: OperatorConsoleProps) {
   const router = useRouter();
   const [reports, setReports] = useState(initialReports);
   const [audits, setAudits] = useState(initialAudits);
   const [deliveryEvents, setDeliveryEvents] = useState(initialDeliveryEvents);
+  const [deliveryRuns, setDeliveryRuns] = useState(initialDeliveryRuns);
   const [runSummary, setRunSummary] = useState<NotificationExecutionRunSummary | null>(null);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
     Object.fromEntries(
@@ -171,6 +175,22 @@ export function OperatorConsole({
 
     const data = await readJson<{ events: NotificationEvent[] }>(response);
     setDeliveryEvents(data.events);
+  };
+
+  const reloadDeliveryRuns = async () => {
+    const response = await fetch("/api/internal/debug/notification-delivery-runs?limit=8", {
+      headers: {
+        "x-cron-secret": token,
+        "x-operator-label": "operator-console"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error("delivery-runs-reload-failed");
+    }
+
+    const data = await readJson<{ runs: NotificationDeliveryRunRecord[] }>(response);
+    setDeliveryRuns(data.runs);
   };
 
   const updateReportStatus = (
@@ -257,9 +277,11 @@ export function OperatorConsole({
 
       const data = await readJson<{
         summary: NotificationExecutionRunSummary;
+        run: NotificationDeliveryRunRecord;
       }>(response);
 
       setRunSummary(data.summary);
+      setDeliveryRuns((current) => [data.run, ...current].slice(0, 8));
       await reloadDeliveryEvents();
       setMessage(systemCopy.operator.runBatchSaved);
     });
@@ -267,7 +289,7 @@ export function OperatorConsole({
 
   const applyDeliveryControl = (
     action: NotificationDeliveryControlAction,
-    eventId: string
+    eventIds: string[]
   ) => {
     startTransition(async () => {
       const response = await fetch("/api/internal/delivery/control", {
@@ -279,7 +301,7 @@ export function OperatorConsole({
         },
         body: JSON.stringify({
           action,
-          eventIds: [eventId]
+          eventIds
         })
       });
 
@@ -289,6 +311,7 @@ export function OperatorConsole({
       }
 
       await reloadDeliveryEvents();
+      await reloadDeliveryRuns();
       setMessage(systemCopy.operator.deliveryControlSaved);
       router.refresh();
     });
@@ -529,6 +552,51 @@ export function OperatorConsole({
         )}
       </SectionCard>
 
+      <SectionCard title={systemCopy.operator.runHistoryTitle}>
+        {!deliveryRuns.length ? (
+          <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.runHistoryEmpty}</p>
+        ) : (
+          <div className="grid gap-3">
+            {deliveryRuns.map((run) => (
+              <article
+                key={run.id}
+                className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusChip label={formatDateTime(run.ranAt)} tone="quiet" />
+                  <StatusChip
+                    label={`${systemCopy.operator.runSummaryLabels.claimed} ${run.claimedCount}`}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.runSummaryLabels.sent} ${run.sentCount}`}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.runSummaryLabels.failed} ${run.failedCount}`}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.runSummaryLabels.retryable} ${run.retryableCount}`}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.runSummaryLabels.guardrail} ${run.guardrailSkippedCount}`}
+                    tone="quiet"
+                  />
+                </div>
+                <p className="mt-3 text-sm text-slate-700">
+                  <span className="font-medium text-slate-900">
+                    {systemCopy.operator.labels.claim}
+                  </span>{" "}
+                  {run.claimToken}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
       <SectionCard title={systemCopy.operator.deliveryGroupsTitle}>
         {!deliveryEvents.length ? (
           <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.deliveryEmpty}</p>
@@ -540,6 +608,40 @@ export function OperatorConsole({
                   <div className="flex items-center gap-2">
                     <StatusChip label={group.title} tone="quiet" />
                     <span className="text-xs text-slate-500">{group.items.length}</span>
+                    {group.key === "retryable" || group.key === "failed" ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() =>
+                          applyDeliveryControl(
+                            "requeue",
+                            group.items.map((event) => event.id)
+                          )
+                        }
+                        className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                      >
+                        {pending
+                          ? systemCopy.operator.requeueing
+                          : systemCopy.operator.batchRequeue}
+                      </button>
+                    ) : null}
+                    {group.key === "expired" ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() =>
+                          applyDeliveryControl(
+                            "release_expired_claim",
+                            group.items.map((event) => event.id)
+                          )
+                        }
+                        className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                      >
+                        {pending
+                          ? systemCopy.operator.releasingClaim
+                          : systemCopy.operator.batchReleaseClaim}
+                      </button>
+                    ) : null}
                   </div>
                   <div className="grid gap-3">
                     {group.items.map((event) => {
@@ -594,7 +696,7 @@ export function OperatorConsole({
                               <button
                                 type="button"
                                 disabled={pending}
-                                onClick={() => applyDeliveryControl(control.action, event.id)}
+                                onClick={() => applyDeliveryControl(control.action, [event.id])}
                                 className="rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
                               >
                                 {pending

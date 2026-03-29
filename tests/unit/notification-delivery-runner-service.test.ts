@@ -6,6 +6,7 @@ const markNotificationBatchFailed = vi.fn();
 const markNotificationBatchRetryable = vi.fn();
 const getNotificationSenderAdapter = vi.fn();
 const prepareNotificationDeliveryBatchForSender = vi.fn();
+const recordNotificationDeliveryRun = vi.fn();
 
 vi.mock("@/lib/services/notification-delivery-service", () => ({
   NOTIFICATION_DELIVERY_MAX_ATTEMPTS: 3,
@@ -20,6 +21,10 @@ vi.mock("@/lib/services/notification-delivery-service", () => ({
 vi.mock("@/lib/services/notification-sender-adapter", () => ({
   getNotificationSenderAdapter,
   prepareNotificationDeliveryBatchForSender
+}));
+
+vi.mock("@/lib/services/notification-delivery-run-history-service", () => ({
+  recordNotificationDeliveryRun
 }));
 
 describe("notification delivery runner service", () => {
@@ -58,14 +63,37 @@ describe("notification delivery runner service", () => {
             channel: "inapp",
             attemptCount: 0
           },
+          adapterKey: "noop-inapp",
           payload: {
-            eventId: "event-1",
-            channel: "inapp"
+            channel: "inapp",
+            recipient: { userId: "viewer-1", address: null, deviceToken: null },
+            content: {
+              title: "파도가 닿았어요",
+              body: "조용히 이어 볼 수 있어요."
+            },
+            context: {
+              eventId: "event-1",
+              eventType: "for_you_wave",
+              postId: null,
+              lane: null,
+              claimToken: "claim-1"
+            }
           }
         }
       ]
     });
     markNotificationBatchSent.mockResolvedValue([{ id: "event-1", state: "sent" }]);
+    recordNotificationDeliveryRun.mockResolvedValue({
+      id: "run-1",
+      claimToken: "claim-1",
+      ranAt: "2026-03-29T10:00:00.000Z",
+      requestedLimit: 1,
+      claimedCount: 1,
+      sentCount: 1,
+      failedCount: 0,
+      retryableCount: 0,
+      guardrailSkippedCount: 0
+    });
 
     const { runNotificationDeliveryBatch } = await import(
       "../../lib/services/notification-delivery-runner-service"
@@ -79,6 +107,7 @@ describe("notification delivery runner service", () => {
       eventIds: ["event-1"],
       claimToken: "claim-1"
     });
+    expect(recordNotificationDeliveryRun).toHaveBeenCalled();
     expect(result.summary).toMatchObject({
       claimedCount: 1,
       sentCount: 1,
@@ -125,10 +154,21 @@ describe("notification delivery runner service", () => {
       claimedAt: "2026-03-29T10:00:00.000Z",
       claimExpiresAt: "2026-03-29T10:10:00.000Z",
       items: [
-        { event: { id: "event-1", channel: "inapp", attemptCount: 3 }, payload: {} },
-        { event: { id: "event-2", channel: "email", attemptCount: 1 }, payload: {} },
-        { event: { id: "event-3", channel: "push", attemptCount: 1 }, payload: {} }
+        { event: { id: "event-1", channel: "inapp", attemptCount: 3 }, adapterKey: "noop-inapp", payload: {} },
+        { event: { id: "event-2", channel: "email", attemptCount: 1 }, adapterKey: "noop-email", payload: {} },
+        { event: { id: "event-3", channel: "push", attemptCount: 1 }, adapterKey: "noop-push", payload: {} }
       ]
+    });
+    recordNotificationDeliveryRun.mockResolvedValue({
+      id: "run-2",
+      claimToken: "claim-2",
+      ranAt: "2026-03-29T10:00:00.000Z",
+      requestedLimit: null,
+      claimedCount: 3,
+      sentCount: 0,
+      failedCount: 2,
+      retryableCount: 1,
+      guardrailSkippedCount: 1
     });
 
     const { runNotificationDeliveryBatch } = await import(
@@ -164,6 +204,59 @@ describe("notification delivery runner service", () => {
       failedCount: 2,
       retryableCount: 1,
       guardrailSkippedCount: 1
+    });
+    expect(result.run.id).toBe("run-2");
+  });
+
+  it("uses the retry policy when no manual retry delay is provided", async () => {
+    claimDeliverableNotificationBatch.mockResolvedValue({
+      claimToken: "claim-3",
+      claimedAt: "2026-03-29T10:00:00.000Z",
+      claimExpiresAt: "2026-03-29T10:10:00.000Z",
+      events: [{ id: "event-4", channel: "email", attemptCount: 1 }]
+    });
+
+    const retryableError = Object.assign(new Error("email-temporary"), {
+      retryable: true
+    });
+    const previewSend = vi.fn().mockRejectedValue(retryableError);
+
+    getNotificationSenderAdapter.mockReturnValue({ previewSend });
+    prepareNotificationDeliveryBatchForSender.mockReturnValue({
+      claimToken: "claim-3",
+      claimedAt: "2026-03-29T10:00:00.000Z",
+      claimExpiresAt: "2026-03-29T10:10:00.000Z",
+      items: [
+        {
+          event: { id: "event-4", channel: "email", attemptCount: 1 },
+          adapterKey: "noop-email",
+          payload: {}
+        }
+      ]
+    });
+    recordNotificationDeliveryRun.mockResolvedValue({
+      id: "run-3",
+      claimToken: "claim-3",
+      ranAt: "2026-03-29T10:00:00.000Z",
+      requestedLimit: null,
+      claimedCount: 1,
+      sentCount: 0,
+      failedCount: 0,
+      retryableCount: 1,
+      guardrailSkippedCount: 0
+    });
+
+    const { runNotificationDeliveryBatch } = await import(
+      "../../lib/services/notification-delivery-runner-service"
+    );
+
+    await runNotificationDeliveryBatch();
+
+    expect(markNotificationBatchRetryable).toHaveBeenCalledWith({
+      eventIds: ["event-4"],
+      claimToken: "claim-3",
+      retryAfterMinutes: 60,
+      lastError: "email-temporary"
     });
   });
 });

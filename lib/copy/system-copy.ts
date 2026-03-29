@@ -212,8 +212,12 @@ export const systemCopy = {
     requeueing: "다시 대기열에 두는 중이에요...",
     releaseClaim: "만료된 클레임 풀기",
     releasingClaim: "클레임을 정리하는 중이에요...",
+    batchRequeue: "이 섹션 다시 대기열에 두기",
+    batchReleaseClaim: "이 섹션 클레임 풀기",
     runSummaryTitle: "마지막 실행 요약",
     runSummaryEmpty: "아직 이 화면에서 실행한 배치가 없어요.",
+    runHistoryTitle: "최근 실행 기록",
+    runHistoryEmpty: "아직 남아 있는 실행 기록이 없어요.",
     runSummaryLabels: {
       claimed: "가져온 이벤트",
       sent: "전달 완료",

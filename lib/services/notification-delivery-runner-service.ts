@@ -3,6 +3,7 @@ import type {
   NotificationExecutionRunResult,
   NotificationExecutionRunSummary
 } from "@/lib/domain/types";
+import { recordNotificationDeliveryRun } from "@/lib/services/notification-delivery-run-history-service";
 import {
   NOTIFICATION_DELIVERY_MAX_ATTEMPTS,
   claimDeliverableNotificationBatch,
@@ -11,6 +12,7 @@ import {
   markNotificationBatchRetryable,
   markNotificationBatchSent
 } from "@/lib/services/notification-delivery-service";
+import { resolveNotificationRetryPolicy } from "@/lib/services/notification-retry-policy-service";
 import {
   getNotificationSenderAdapter,
   prepareNotificationDeliveryBatchForSender
@@ -37,6 +39,17 @@ export type NotificationDeliveryRunResult = {
   };
   results: NotificationExecutionRunResult[];
   summary: NotificationExecutionRunSummary;
+  run: {
+    id: string;
+    claimToken: string;
+    ranAt: string;
+    requestedLimit: number | null;
+    claimedCount: number;
+    sentCount: number;
+    failedCount: number;
+    retryableCount: number;
+    guardrailSkippedCount: number;
+  };
 };
 
 function normalizeRunnerError(error: unknown): NotificationRunnerError {
@@ -50,6 +63,7 @@ function normalizeRunnerError(error: unknown): NotificationRunnerError {
 export async function runNotificationDeliveryBatch(
   input: NotificationDeliveryRunnerInput = {}
 ): Promise<NotificationDeliveryRunResult> {
+  const ranAt = new Date().toISOString();
   const batch = await claimDeliverableNotificationBatch(input);
   const senderBatch = prepareNotificationDeliveryBatchForSender(batch);
   const results: NotificationExecutionRunResult[] = [];
@@ -96,10 +110,14 @@ export async function runNotificationDeliveryBatch(
       const message = normalizedError.message || "delivery-preview-failed";
 
       if (normalizedError.retryable) {
+        const retryPolicy = resolveNotificationRetryPolicy({
+          channel: item.event.channel,
+          attemptCount: item.event.attemptCount ?? 0
+        });
         await markNotificationBatchRetryable({
           eventIds: [eventId],
           claimToken: batch.claimToken,
-          retryAfterMinutes: input.retryAfterMinutes,
+          retryAfterMinutes: input.retryAfterMinutes ?? retryPolicy.retryAfterMinutes,
           lastError: message
         });
         retryableCount += 1;
@@ -125,6 +143,22 @@ export async function runNotificationDeliveryBatch(
     }
   }
 
+  const summary: NotificationExecutionRunSummary = {
+    claimToken: batch.claimToken,
+    ranAt,
+    claimedCount: batch.events.length,
+    sentCount,
+    failedCount,
+    retryableCount,
+    guardrailSkippedCount,
+    emptyBatch: batch.events.length === 0
+  };
+
+  const run = await recordNotificationDeliveryRun({
+    requestedLimit: input.limit,
+    summary
+  });
+
   return {
     batch: {
       claimToken: batch.claimToken,
@@ -133,14 +167,7 @@ export async function runNotificationDeliveryBatch(
       claimedCount: batch.events.length
     },
     results,
-    summary: {
-      claimToken: batch.claimToken,
-      claimedCount: batch.events.length,
-      sentCount,
-      failedCount,
-      retryableCount,
-      guardrailSkippedCount,
-      emptyBatch: batch.events.length === 0
-    }
+    summary,
+    run
   };
 }
