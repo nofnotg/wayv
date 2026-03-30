@@ -60,6 +60,7 @@ describe("notification delivery runner service", () => {
       channel: "inapp",
       adapterKey: "noop-inapp",
       providerKey: "inapp-noop",
+      senderMode: "noop",
       externalMessageId: "inapp-preview:event-1",
       retryCategory: null,
       providerStatusCode: "preview-ok",
@@ -79,6 +80,7 @@ describe("notification delivery runner service", () => {
           },
           adapterKey: "noop-inapp",
           providerKey: "inapp-noop",
+          senderMode: "noop",
           payload: {
             channel: "inapp",
             recipient: { userId: "viewer-1", address: null, deviceToken: null },
@@ -133,6 +135,7 @@ describe("notification delivery runner service", () => {
           channel: "inapp",
           adapterKey: "noop-inapp",
           providerKey: "inapp-noop",
+          senderMode: "noop",
           externalMessageId: "inapp-preview:event-1",
           retryCategory: null,
           providerStatusCode: "preview-ok",
@@ -163,12 +166,19 @@ describe("notification delivery runner service", () => {
     });
 
     const retryableError = Object.assign(new Error("temporary-outage"), {
-      retryable: true
+      retryable: true,
+      retryCategory: "provider_unavailable",
+      providerStatusCode: "503"
     });
 
     const previewSendInapp = vi.fn();
     const previewSendEmail = vi.fn().mockRejectedValue(retryableError);
-    const previewSendPush = vi.fn().mockRejectedValue(new Error("hard-failure"));
+    const previewSendPush = vi.fn().mockRejectedValue(
+      Object.assign(new Error("invalid-recipient"), {
+        retryCategory: "invalid_recipient",
+        providerStatusCode: "400"
+      })
+    );
 
     getNotificationSenderAdapter.mockImplementation((channel: string) => {
       if (channel === "inapp") {
@@ -187,9 +197,9 @@ describe("notification delivery runner service", () => {
       claimedAt: "2026-03-29T10:00:00.000Z",
       claimExpiresAt: "2026-03-29T10:10:00.000Z",
       items: [
-        { event: { id: "event-1", channel: "inapp", attemptCount: 3 }, adapterKey: "noop-inapp", providerKey: "inapp-noop", payload: {} },
-        { event: { id: "event-2", channel: "email", attemptCount: 1 }, adapterKey: "noop-email", providerKey: "email-noop", payload: {} },
-        { event: { id: "event-3", channel: "push", attemptCount: 1 }, adapterKey: "noop-push", providerKey: "push-noop", payload: {} }
+        { event: { id: "event-1", channel: "inapp", attemptCount: 3 }, adapterKey: "noop-inapp", providerKey: "inapp-noop", senderMode: "noop", payload: {} },
+        { event: { id: "event-2", channel: "email", attemptCount: 1 }, adapterKey: "noop-email", providerKey: "email-noop", senderMode: "noop", payload: {} },
+        { event: { id: "event-3", channel: "push", attemptCount: 1 }, adapterKey: "noop-push", providerKey: "push-noop", senderMode: "noop", payload: {} }
       ]
     });
     recordNotificationDeliveryRun.mockResolvedValue({
@@ -222,10 +232,10 @@ describe("notification delivery runner service", () => {
       retryAfterMinutes: 20,
       lastError: "temporary-outage"
     });
-    expect(markNotificationBatchFailed).toHaveBeenCalledWith({
+    expect(markNotificationBatchFailed).toHaveBeenNthCalledWith(2, {
       eventIds: ["event-3"],
       claimToken: "claim-2",
-      lastError: "hard-failure"
+      lastError: "invalid-recipient"
     });
     expect(result.results.map((item) => item.outcome)).toEqual([
       "guardrail_skipped",
@@ -248,6 +258,7 @@ describe("notification delivery runner service", () => {
           channel: "inapp",
           adapterKey: "noop-inapp",
           providerKey: "inapp-noop",
+          senderMode: "noop",
           externalMessageId: null,
           retryCategory: null,
           providerStatusCode: null,
@@ -259,9 +270,10 @@ describe("notification delivery runner service", () => {
           channel: "email",
           adapterKey: "noop-email",
           providerKey: "email-noop",
+          senderMode: "noop",
           externalMessageId: null,
-          retryCategory: "temporary",
-          providerStatusCode: null,
+          retryCategory: "provider_unavailable",
+          providerStatusCode: "503",
           outcome: "retryable",
           message: "temporary-outage"
         },
@@ -270,11 +282,12 @@ describe("notification delivery runner service", () => {
           channel: "push",
           adapterKey: "noop-push",
           providerKey: "push-noop",
+          senderMode: "noop",
           externalMessageId: null,
-          retryCategory: null,
-          providerStatusCode: null,
+          retryCategory: "invalid_recipient",
+          providerStatusCode: "400",
           outcome: "failed",
-          message: "hard-failure"
+          message: "invalid-recipient"
         }
       ]
     });
@@ -304,6 +317,7 @@ describe("notification delivery runner service", () => {
           event: { id: "event-4", channel: "email", attemptCount: 1 },
           adapterKey: "noop-email",
           providerKey: "email-noop",
+          senderMode: "noop",
           payload: {}
         }
       ]

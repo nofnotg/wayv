@@ -226,6 +226,7 @@ export const systemCopy = {
     selectedRetry: "선택한 항목 다시 대기열에 두기",
     selectedRequeueing: "선택한 항목을 다시 대기열에 두는 중이에요...",
     selectedRetryLabel: "선택",
+    filterAll: "전체",
     attemptMessageEmpty: "남겨진 추가 메모가 없어요.",
     runSummaryLabels: {
       claimed: "가져온 이벤트",
@@ -239,6 +240,17 @@ export const systemCopy = {
       failed: "보류",
       retryable: "다시 시도 예정",
       guardrail_skipped: "가드레일로 멈춤"
+    },
+    retryCategoryLabels: {
+      provider_unavailable: "Provider 응답 지연",
+      rate_limited: "호출 한도 대기",
+      invalid_recipient: "수신 대상 확인 필요",
+      authentication: "인증 확인 필요",
+      unknown: "원인 확인 필요"
+    },
+    senderModeLabels: {
+      noop: "연결 전 미리보기",
+      provider: "실제 Provider 단계"
     },
     deliveryLabels: {
       ready: "전달 준비",
@@ -260,11 +272,13 @@ export const systemCopy = {
       transition: "상태 변경",
       claim: "클레임",
       attempt: "시도",
+      channel: "채널",
       adapter: "어댑터",
       provider: "Provider",
       externalMessageId: "외부 메시지 ID",
       retryCategory: "재시도 분류",
       providerStatusCode: "Provider 상태 코드",
+      senderMode: "연결 단계",
       outcome: "결과",
       message: "메시지"
     },

@@ -5,6 +5,7 @@ export const emailNoopSenderAdapter: NotificationSenderAdapter = {
   adapterKey: "noop-email",
   channel: "email",
   providerKey: "email-noop",
+  mode: "noop",
   buildPayload(event, claimToken) {
     const payload = buildBaseNotificationSenderPayload(event, claimToken);
     payload.recipient.address = `${event.userId}@pending.local`;
@@ -16,6 +17,7 @@ export const emailNoopSenderAdapter: NotificationSenderAdapter = {
       channel: "email",
       adapterKey: "noop-email",
       providerKey: "email-noop",
+      senderMode: "noop",
       externalMessageId: `email-preview:${item.event.id}`,
       retryCategory: null,
       providerStatusCode: "preview-ok",

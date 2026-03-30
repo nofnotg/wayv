@@ -444,10 +444,13 @@ export type NotificationDeliveryScope =
   | "failed";
 
 export type NotificationProviderRetryCategory =
-  | "temporary"
+  | "provider_unavailable"
   | "rate_limited"
-  | "provider_rejected"
+  | "invalid_recipient"
+  | "authentication"
   | "unknown";
+
+export type NotificationSenderMode = "noop" | "provider";
 
 export type NotificationSenderPayload = {
   channel: NotificationChannel;
@@ -473,6 +476,7 @@ export type NotificationSenderBatchItem = {
   event: NotificationEvent;
   adapterKey: string;
   providerKey: string;
+  senderMode: NotificationSenderMode;
   payload: NotificationSenderPayload;
 };
 
@@ -483,11 +487,18 @@ export type NotificationSenderBatch = {
   items: NotificationSenderBatchItem[];
 };
 
+export type NotificationSenderRegistryEntry = {
+  channel: NotificationChannel;
+  mode: NotificationSenderMode;
+  futureProviderKey: string;
+};
+
 export type NotificationSenderPreviewResult = {
   accepted: true;
   channel: NotificationChannel;
   adapterKey: string;
   providerKey: string;
+  senderMode: NotificationSenderMode;
   externalMessageId: string | null;
   retryCategory: NotificationProviderRetryCategory | null;
   providerStatusCode: string | null;
@@ -519,6 +530,7 @@ export type NotificationExecutionRunResult = {
   channel: NotificationChannel;
   adapterKey: string;
   providerKey: string;
+  senderMode: NotificationSenderMode;
   externalMessageId: string | null;
   retryCategory: NotificationProviderRetryCategory | null;
   providerStatusCode: string | null;
@@ -562,6 +574,7 @@ export type NotificationDeliveryAttemptLog = {
   channel: NotificationChannel;
   adapterKey: string;
   providerKey: string;
+  senderMode: NotificationSenderMode;
   externalMessageId: string | null;
   retryCategory: NotificationProviderRetryCategory | null;
   providerStatusCode: string | null;

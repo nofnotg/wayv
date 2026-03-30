@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { getNotificationSenderAdapter, prepareNotificationDeliveryBatchForSender } from "../../lib/services/notification-sender-adapter";
+import {
+  getNotificationSenderRegistryEntry,
+  listNotificationSenderRegistryEntries
+} from "../../lib/services/notification-sender-registry";
 
 describe("notification sender adapter", () => {
   it("selects a noop adapter for each supported channel", () => {
@@ -10,6 +14,20 @@ describe("notification sender adapter", () => {
     expect(getNotificationSenderAdapter("email").adapterKey).toBe("noop-email");
     expect(getNotificationSenderAdapter("push").channel).toBe("push");
     expect(getNotificationSenderAdapter("push").adapterKey).toBe("noop-push");
+  });
+
+  it("keeps a clean staging boundary between noop adapters and future providers", () => {
+    expect(getNotificationSenderRegistryEntry("inapp")).toMatchObject({
+      channel: "inapp",
+      mode: "noop",
+      futureProviderKey: "inapp-store"
+    });
+    expect(getNotificationSenderRegistryEntry("email")).toMatchObject({
+      channel: "email",
+      mode: "noop",
+      futureProviderKey: "email-provider"
+    });
+    expect(listNotificationSenderRegistryEntries()).toHaveLength(3);
   });
 
   it("maps a claimed batch into sender payloads", () => {
@@ -56,6 +74,7 @@ describe("notification sender adapter", () => {
     });
     expect(senderBatch.items[0].adapterKey).toBe("noop-inapp");
     expect(senderBatch.items[0].providerKey).toBe("inapp-noop");
+    expect(senderBatch.items[0].senderMode).toBe("noop");
   });
 
   it("adds channel-specific recipient placeholders for future provider wiring", () => {
@@ -119,6 +138,7 @@ describe("notification sender adapter", () => {
     const preview = await getNotificationSenderAdapter("email").previewSend(senderBatch.items[0]);
 
     expect(preview.providerKey).toBe("email-noop");
+    expect(preview.senderMode).toBe("noop");
     expect(preview.externalMessageId).toBe("email-preview:44444444-4444-4444-8444-444444444444");
     expect(preview.providerStatusCode).toBe("preview-ok");
     expect(preview.retryCategory).toBeNull();

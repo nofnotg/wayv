@@ -5,6 +5,7 @@ export const pushNoopSenderAdapter: NotificationSenderAdapter = {
   adapterKey: "noop-push",
   channel: "push",
   providerKey: "push-noop",
+  mode: "noop",
   buildPayload(event, claimToken) {
     const payload = buildBaseNotificationSenderPayload(event, claimToken);
     payload.recipient.deviceToken = `pending:${event.userId}`;
@@ -16,6 +17,7 @@ export const pushNoopSenderAdapter: NotificationSenderAdapter = {
       channel: "push",
       adapterKey: "noop-push",
       providerKey: "push-noop",
+      senderMode: "noop",
       externalMessageId: `push-preview:${item.event.id}`,
       retryCategory: null,
       providerStatusCode: "preview-ok",

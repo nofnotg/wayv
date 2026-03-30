@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
   ModerationAuditLog,
+  NotificationChannel,
   NotificationDeliveryAttemptLog,
   NotificationDeliveryRunDetail,
   NotificationDeliveryRunRecord,
@@ -16,7 +17,8 @@ import type {
   ModerationStatus,
   NotificationDeliveryControlAction,
   NotificationEvent,
-  NotificationExecutionRunSummary
+  NotificationExecutionRunSummary,
+  NotificationProviderRetryCategory
 } from "@/lib/domain/types";
 import {
   buildNotificationDeliveryAnalytics,
@@ -35,6 +37,8 @@ type OperatorConsoleProps = {
 const statusOptions: ModerationStatus[] = ["active", "under_review", "limited", "removed"];
 const runDetailFilterOptions = ["all", "failed", "retryable", "sent", "guardrail_skipped"] as const;
 type RunDetailFilter = (typeof runDetailFilterOptions)[number];
+type RunDetailChannelFilter = "all" | NotificationChannel;
+type RunDetailRetryCategoryFilter = "all" | NotificationProviderRetryCategory;
 
 function groupAuditsByTargetType(audits: ModerationAuditLog[]) {
   return {
@@ -131,6 +135,11 @@ export function OperatorConsole({
   const [selectedDeliveryEventIds, setSelectedDeliveryEventIds] = useState<string[]>([]);
   const [selectedRunAttemptEventIds, setSelectedRunAttemptEventIds] = useState<string[]>([]);
   const [runDetailFilter, setRunDetailFilter] = useState<RunDetailFilter>("all");
+  const [runDetailChannelFilter, setRunDetailChannelFilter] =
+    useState<RunDetailChannelFilter>("all");
+  const [runDetailProviderFilter, setRunDetailProviderFilter] = useState("all");
+  const [runDetailRetryCategoryFilter, setRunDetailRetryCategoryFilter] =
+    useState<RunDetailRetryCategoryFilter>("all");
   const [runDetailLoading, setRunDetailLoading] = useState(false);
   const [runSummary, setRunSummary] = useState<NotificationExecutionRunSummary | null>(null);
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ModerationStatus>>(
@@ -181,17 +190,51 @@ export function OperatorConsole({
     ],
     [deliveryEvents]
   );
+  const availableRunDetailProviders = useMemo(() => {
+    if (!selectedRunDetail) {
+      return [] as string[];
+    }
+
+    return [...new Set(selectedRunDetail.attempts.map((attempt) => attempt.providerKey))].sort();
+  }, [selectedRunDetail]);
+  const availableRunDetailRetryCategories = useMemo(() => {
+    if (!selectedRunDetail) {
+      return [] as NotificationProviderRetryCategory[];
+    }
+
+    return [
+      ...new Set(
+        selectedRunDetail.attempts
+          .map((attempt) => attempt.retryCategory)
+          .filter((value): value is NotificationProviderRetryCategory => Boolean(value))
+      )
+    ].sort();
+  }, [selectedRunDetail]);
   const visibleRunAttempts = useMemo(() => {
     if (!selectedRunDetail) {
       return [] as NotificationDeliveryAttemptLog[];
     }
 
-    if (runDetailFilter === "all") {
-      return selectedRunDetail.attempts;
-    }
-
-    return selectedRunDetail.attempts.filter((attempt) => attempt.outcome === runDetailFilter);
-  }, [runDetailFilter, selectedRunDetail]);
+    return selectedRunDetail.attempts
+      .filter((attempt) => (runDetailFilter === "all" ? true : attempt.outcome === runDetailFilter))
+      .filter((attempt) =>
+        runDetailChannelFilter === "all" ? true : attempt.channel === runDetailChannelFilter
+      )
+      .filter((attempt) =>
+        runDetailProviderFilter === "all" ? true : attempt.providerKey === runDetailProviderFilter
+      )
+      .filter((attempt) =>
+        runDetailRetryCategoryFilter === "all"
+          ? true
+          : attempt.retryCategory === runDetailRetryCategoryFilter
+      );
+  }, [
+    runDetailChannelFilter,
+    runDetailFilter,
+    runDetailProviderFilter,
+    runDetailRetryCategoryFilter,
+    selectedRunDetail
+  ]);
   const selectedRunRetryableEventIds = useMemo(() => {
     if (!selectedRunDetail) {
       return [] as string[];
@@ -244,6 +287,9 @@ export function OperatorConsole({
   const loadRunDetail = async (runId: string) => {
     setRunDetailLoading(true);
     setRunDetailFilter("all");
+    setRunDetailChannelFilter("all");
+    setRunDetailProviderFilter("all");
+    setRunDetailRetryCategoryFilter("all");
     setSelectedRunAttemptEventIds([]);
 
     try {
@@ -732,6 +778,52 @@ export function OperatorConsole({
                     : systemCopy.operator.attemptOutcomeLabels[filterKey]}
                 </button>
               ))}
+              <select
+                value={runDetailChannelFilter}
+                onChange={(event) =>
+                  setRunDetailChannelFilter(event.target.value as RunDetailChannelFilter)
+                }
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700"
+              >
+                <option value="all">
+                  {systemCopy.operator.labels.channel} · {systemCopy.operator.filterAll}
+                </option>
+                <option value="inapp">inapp</option>
+                <option value="email">email</option>
+                <option value="push">push</option>
+              </select>
+              <select
+                value={runDetailProviderFilter}
+                onChange={(event) => setRunDetailProviderFilter(event.target.value)}
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700"
+              >
+                <option value="all">
+                  {systemCopy.operator.labels.provider} · {systemCopy.operator.filterAll}
+                </option>
+                {availableRunDetailProviders.map((providerKey) => (
+                  <option key={providerKey} value={providerKey}>
+                    {providerKey}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={runDetailRetryCategoryFilter}
+                onChange={(event) =>
+                  setRunDetailRetryCategoryFilter(
+                    event.target.value as RunDetailRetryCategoryFilter
+                  )
+                }
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700"
+              >
+                <option value="all">
+                  {systemCopy.operator.labels.retryCategory} · {systemCopy.operator.filterAll}
+                </option>
+                {availableRunDetailRetryCategories.map((retryCategory) => (
+                  <option key={retryCategory} value={retryCategory}>
+                    {systemCopy.operator.retryCategoryLabels[retryCategory]}
+                  </option>
+                ))}
+              </select>
               {selectedRunRetryableEventIds.length ? (
                 <button
                   type="button"
@@ -777,6 +869,16 @@ export function OperatorConsole({
                       <StatusChip label={attempt.channel} tone="quiet" />
                       <StatusChip label={attempt.adapterKey} tone="quiet" />
                       <StatusChip label={attempt.providerKey} tone="quiet" />
+                      <StatusChip
+                        label={systemCopy.operator.senderModeLabels[attempt.senderMode]}
+                        tone="quiet"
+                      />
+                      {attempt.retryCategory ? (
+                        <StatusChip
+                          label={systemCopy.operator.retryCategoryLabels[attempt.retryCategory]}
+                          tone={attempt.outcome === "failed" ? "active" : "quiet"}
+                        />
+                      ) : null}
                       <span className="text-xs text-slate-500">
                         {formatDateTime(attempt.createdAt)}
                       </span>
@@ -819,9 +921,15 @@ export function OperatorConsole({
                           <span className="font-medium text-slate-900">
                             {systemCopy.operator.labels.retryCategory}
                           </span>{" "}
-                          {attempt.retryCategory}
+                          {systemCopy.operator.retryCategoryLabels[attempt.retryCategory]}
                         </p>
                       ) : null}
+                      <p>
+                        <span className="font-medium text-slate-900">
+                          {systemCopy.operator.labels.senderMode}
+                        </span>{" "}
+                        {systemCopy.operator.senderModeLabels[attempt.senderMode]}
+                      </p>
                       {attempt.providerStatusCode ? (
                         <p>
                           <span className="font-medium text-slate-900">
