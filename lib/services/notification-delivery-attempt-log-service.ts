@@ -1,9 +1,11 @@
 import type {
+  NotificationDeliveryAttemptAggregates,
   NotificationDeliveryAttemptLog,
   NotificationDeliveryRunDetail,
   NotificationDeliveryRunRecord,
   NotificationExecutionRunResult
 } from "@/lib/domain/types";
+import { buildNotificationDeliveryAttemptAggregates } from "@/lib/services/notification-delivery-attempt-aggregation-service";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
 
 type AttemptLogRow = {
@@ -36,6 +38,13 @@ type RunRow = {
   created_at: string;
 };
 
+type EventSnapshotRow = {
+  id: string;
+  state: NotificationDeliveryAttemptLog["currentEventState"];
+  next_retry_at: string | null;
+  attempt_count: number | null;
+};
+
 function mapRunRow(row: RunRow): NotificationDeliveryRunRecord {
   return {
     id: row.id,
@@ -66,6 +75,22 @@ function mapAttemptRow(row: AttemptLogRow): NotificationDeliveryAttemptLog {
     outcome: row.outcome,
     message: row.message,
     createdAt: row.created_at
+  };
+}
+
+function applyEventSnapshot(
+  attempt: NotificationDeliveryAttemptLog,
+  snapshot: EventSnapshotRow | undefined
+) {
+  if (!snapshot) {
+    return attempt;
+  }
+
+  return {
+    ...attempt,
+    currentEventState: snapshot.state ?? null,
+    nextRetryAt: snapshot.next_retry_at,
+    attemptCount: snapshot.attempt_count ?? undefined
   };
 }
 
@@ -132,8 +157,34 @@ export async function getNotificationDeliveryRunDetail(runId: string): Promise<N
     throw new Error(attemptsError.message);
   }
 
+  const mappedAttempts = (attempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
+  const eventIds = [...new Set(mappedAttempts.map((attempt) => attempt.eventId))];
+  let attemptsWithSnapshots = mappedAttempts;
+
+  if (eventIds.length) {
+    const { data: eventSnapshots, error: eventSnapshotError } = await supabase
+      .from("notification_events")
+      .select("id, state, next_retry_at, attempt_count")
+      .in("id", eventIds);
+
+    if (eventSnapshotError) {
+      throw new Error(eventSnapshotError.message);
+    }
+
+    const snapshotMap = new Map(
+      (eventSnapshots ?? []).map((row) => [row.id, row as EventSnapshotRow])
+    );
+    attemptsWithSnapshots = mappedAttempts.map((attempt) =>
+      applyEventSnapshot(attempt, snapshotMap.get(attempt.eventId))
+    );
+  }
+
+  const aggregates: NotificationDeliveryAttemptAggregates =
+    buildNotificationDeliveryAttemptAggregates(attemptsWithSnapshots);
+
   return {
     run: mapRunRow(runData as RunRow),
-    attempts: (attempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow))
+    attempts: attemptsWithSnapshots,
+    aggregates
   };
 }

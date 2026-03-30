@@ -11,23 +11,32 @@ type NotificationSenderRegistryRecord = NotificationSenderRegistryEntry & {
   adapter: NotificationSenderAdapter;
 };
 
+// Each channel stays on a noop adapter until a real provider is wired in.
+// When that happens, `mode`, `activeProviderKey`, and `providerReady` become the
+// single staging boundary instead of leaking provider logic into the runner.
 const senderRegistry: Record<NotificationChannel, NotificationSenderRegistryRecord> = {
   inapp: {
     channel: "inapp",
     mode: "noop",
+    activeProviderKey: "inapp-noop",
     futureProviderKey: "inapp-store",
+    providerReady: false,
     adapter: inappNoopSenderAdapter
   },
   email: {
     channel: "email",
     mode: "noop",
+    activeProviderKey: "email-noop",
     futureProviderKey: "email-provider",
+    providerReady: false,
     adapter: emailNoopSenderAdapter
   },
   push: {
     channel: "push",
     mode: "noop",
+    activeProviderKey: "push-noop",
     futureProviderKey: "push-provider",
+    providerReady: false,
     adapter: pushNoopSenderAdapter
   }
 };

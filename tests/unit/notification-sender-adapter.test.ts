@@ -20,12 +20,23 @@ describe("notification sender adapter", () => {
     expect(getNotificationSenderRegistryEntry("inapp")).toMatchObject({
       channel: "inapp",
       mode: "noop",
+      activeProviderKey: "inapp-noop",
+      providerReady: false,
       futureProviderKey: "inapp-store"
     });
     expect(getNotificationSenderRegistryEntry("email")).toMatchObject({
       channel: "email",
       mode: "noop",
+      activeProviderKey: "email-noop",
+      providerReady: false,
       futureProviderKey: "email-provider"
+    });
+    expect(getNotificationSenderRegistryEntry("push")).toMatchObject({
+      channel: "push",
+      mode: "noop",
+      activeProviderKey: "push-noop",
+      providerReady: false,
+      futureProviderKey: "push-provider"
     });
     expect(listNotificationSenderRegistryEntries()).toHaveLength(3);
   });

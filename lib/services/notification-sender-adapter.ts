@@ -19,7 +19,7 @@ export function prepareNotificationDeliveryBatchForSender(
     return {
       event,
       adapterKey: adapter.adapterKey,
-      providerKey: adapter.providerKey,
+      providerKey: registryEntry.activeProviderKey,
       senderMode: registryEntry.mode,
       payload: adapter.buildPayload(event, batch.claimToken)
     };

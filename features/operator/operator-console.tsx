@@ -20,6 +20,7 @@ import type {
   NotificationExecutionRunSummary,
   NotificationProviderRetryCategory
 } from "@/lib/domain/types";
+import { buildNotificationDeliveryAttemptAggregatesForOutcome } from "@/lib/services/notification-delivery-attempt-aggregation-service";
 import {
   buildNotificationDeliveryAnalytics,
   filterNotificationDeliveryEventsByScope
@@ -248,6 +249,26 @@ export function OperatorConsole({
 
     return selectedRunAttemptEventIds.filter((eventId) => retryableIds.has(eventId));
   }, [selectedRunAttemptEventIds, selectedRunDetail]);
+  const failedAttemptAggregates = useMemo(() => {
+    if (!selectedRunDetail) {
+      return null;
+    }
+
+    return buildNotificationDeliveryAttemptAggregatesForOutcome(
+      selectedRunDetail.attempts,
+      "failed"
+    );
+  }, [selectedRunDetail]);
+  const retryableAttemptAggregates = useMemo(() => {
+    if (!selectedRunDetail) {
+      return null;
+    }
+
+    return buildNotificationDeliveryAttemptAggregatesForOutcome(
+      selectedRunDetail.attempts,
+      "retryable"
+    );
+  }, [selectedRunDetail]);
 
   const reloadDeliveryEvents = async () => {
     const response = await fetch(
@@ -761,6 +782,81 @@ export function OperatorConsole({
                 tone="quiet"
               />
             </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <article className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500">
+                  {systemCopy.operator.runAggregateTitles.failedByRetryCategory}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(failedAttemptAggregates?.byRetryCategory.length
+                    ? failedAttemptAggregates.byRetryCategory
+                    : selectedRunDetail.aggregates.byRetryCategory
+                  )
+                    .slice(0, 3)
+                    .map((bucket) => (
+                      <StatusChip
+                        key={`failed-retry-${bucket.key}`}
+                        label={`${systemCopy.operator.retryCategoryLabels[
+                          bucket.key as NotificationProviderRetryCategory
+                        ]} ${bucket.count}`}
+                        tone="quiet"
+                      />
+                    ))}
+                </div>
+              </article>
+              <article className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500">
+                  {systemCopy.operator.runAggregateTitles.failedByProvider}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(failedAttemptAggregates?.byProvider.length
+                    ? failedAttemptAggregates.byProvider
+                    : selectedRunDetail.aggregates.byProvider
+                  )
+                    .slice(0, 3)
+                    .map((bucket) => (
+                      <StatusChip
+                        key={`failed-provider-${bucket.key}`}
+                        label={`${bucket.key} ${bucket.count}`}
+                        tone="quiet"
+                      />
+                    ))}
+                </div>
+              </article>
+              <article className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500">
+                  {systemCopy.operator.runAggregateTitles.retryableByChannel}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(retryableAttemptAggregates?.byChannel.length
+                    ? retryableAttemptAggregates.byChannel
+                    : selectedRunDetail.aggregates.byChannel
+                  )
+                    .slice(0, 3)
+                    .map((bucket) => (
+                      <StatusChip
+                        key={`retryable-channel-${bucket.key}`}
+                        label={`${bucket.key} ${bucket.count}`}
+                        tone="quiet"
+                      />
+                    ))}
+                </div>
+              </article>
+              <article className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500">
+                  {systemCopy.operator.runAggregateTitles.senderModes}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedRunDetail.aggregates.bySenderMode.slice(0, 3).map((bucket) => (
+                    <StatusChip
+                      key={`sender-mode-${bucket.key}`}
+                      label={`${systemCopy.operator.senderModeLabels[bucket.key as "noop" | "provider"]} ${bucket.count}`}
+                      tone="quiet"
+                    />
+                  ))}
+                </div>
+              </article>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {runDetailFilterOptions.map((filterKey) => (
                 <button
@@ -930,12 +1026,38 @@ export function OperatorConsole({
                         </span>{" "}
                         {systemCopy.operator.senderModeLabels[attempt.senderMode]}
                       </p>
+                      {attempt.currentEventState ? (
+                        <p>
+                          <span className="font-medium text-slate-900">
+                            {systemCopy.operator.labels.currentState}
+                          </span>{" "}
+                          {systemCopy.notifications.stateLabels[
+                            attempt.currentEventState as keyof typeof systemCopy.notifications.stateLabels
+                          ] ?? attempt.currentEventState}
+                        </p>
+                      ) : null}
+                      {typeof attempt.attemptCount === "number" ? (
+                        <p>
+                          <span className="font-medium text-slate-900">
+                            {systemCopy.operator.labels.attempt}
+                          </span>{" "}
+                          {attempt.attemptCount}
+                        </p>
+                      ) : null}
                       {attempt.providerStatusCode ? (
                         <p>
                           <span className="font-medium text-slate-900">
                             {systemCopy.operator.labels.providerStatusCode}
                           </span>{" "}
                           {attempt.providerStatusCode}
+                        </p>
+                      ) : null}
+                      {attempt.nextRetryAt ? (
+                        <p>
+                          <span className="font-medium text-slate-900">
+                            {systemCopy.operator.labels.nextRetryAt}
+                          </span>{" "}
+                          {formatDateTime(attempt.nextRetryAt)}
                         </p>
                       ) : null}
                       <p>

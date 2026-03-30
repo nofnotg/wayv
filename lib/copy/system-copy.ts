@@ -223,6 +223,12 @@ export const systemCopy = {
     runDetailLoading: "실행 상세를 불러오는 중이에요...",
     viewRunDetail: "이 실행 살펴보기",
     runDetailFilterAll: "전체",
+    runAggregateTitles: {
+      failedByRetryCategory: "보류된 이유 묶음",
+      failedByProvider: "보류된 Provider 묶음",
+      retryableByChannel: "다시 시도 대기 채널",
+      senderModes: "현재 연결 단계"
+    },
     selectedRetry: "선택한 항목 다시 대기열에 두기",
     selectedRequeueing: "선택한 항목을 다시 대기열에 두는 중이에요...",
     selectedRetryLabel: "선택",
@@ -279,6 +285,8 @@ export const systemCopy = {
       retryCategory: "재시도 분류",
       providerStatusCode: "Provider 상태 코드",
       senderMode: "연결 단계",
+      currentState: "현재 상태",
+      nextRetryAt: "다음 시도 예정",
       outcome: "결과",
       message: "메시지"
     },

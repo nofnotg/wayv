@@ -490,7 +490,9 @@ export type NotificationSenderBatch = {
 export type NotificationSenderRegistryEntry = {
   channel: NotificationChannel;
   mode: NotificationSenderMode;
+  activeProviderKey: string;
   futureProviderKey: string;
+  providerReady: boolean;
 };
 
 export type NotificationSenderPreviewResult = {
@@ -580,10 +582,27 @@ export type NotificationDeliveryAttemptLog = {
   providerStatusCode: string | null;
   outcome: NotificationDeliveryOutcome | "guardrail_skipped";
   message: string | null;
+  currentEventState?: NotificationEventState | null;
+  nextRetryAt?: string | null;
+  attemptCount?: number;
   createdAt: string;
+};
+
+export type NotificationDeliveryAttemptAggregateBucket = {
+  key: string;
+  count: number;
+};
+
+export type NotificationDeliveryAttemptAggregates = {
+  byOutcome: NotificationDeliveryAttemptAggregateBucket[];
+  byChannel: NotificationDeliveryAttemptAggregateBucket[];
+  byProvider: NotificationDeliveryAttemptAggregateBucket[];
+  byRetryCategory: NotificationDeliveryAttemptAggregateBucket[];
+  bySenderMode: NotificationDeliveryAttemptAggregateBucket[];
 };
 
 export type NotificationDeliveryRunDetail = {
   run: NotificationDeliveryRunRecord;
   attempts: NotificationDeliveryAttemptLog[];
+  aggregates: NotificationDeliveryAttemptAggregates;
 };
