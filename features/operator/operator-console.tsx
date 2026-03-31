@@ -37,6 +37,7 @@ type OperatorConsoleProps = {
 
 const statusOptions: ModerationStatus[] = ["active", "under_review", "limited", "removed"];
 const runDetailFilterOptions = ["all", "failed", "retryable", "sent", "guardrail_skipped"] as const;
+const runDetailPageSize = 25;
 type RunDetailFilter = (typeof runDetailFilterOptions)[number];
 type RunDetailChannelFilter = "all" | NotificationChannel;
 type RunDetailRetryCategoryFilter = "all" | NotificationProviderRetryCategory;
@@ -114,6 +115,35 @@ function resolveActionableEventIds(groupEventIds: string[], selectedIds: string[
   return selectedInGroup.length ? selectedInGroup : groupEventIds;
 }
 
+function summarizeRetryableBacklog(events: NotificationEvent[]) {
+  const retryableEvents = filterNotificationDeliveryEventsByScope(events, "retryable_backlog");
+  const byChannel = new Map<NotificationChannel, number>();
+  let dueNowCount = 0;
+  let nextRetryAt: string | null = null;
+  const now = Date.now();
+
+  for (const event of retryableEvents) {
+    byChannel.set(event.channel, (byChannel.get(event.channel) ?? 0) + 1);
+
+    if (event.nextRetryAt) {
+      const retryAt = new Date(event.nextRetryAt).getTime();
+      if (retryAt <= now) {
+        dueNowCount += 1;
+      } else if (!nextRetryAt || retryAt < new Date(nextRetryAt).getTime()) {
+        nextRetryAt = event.nextRetryAt;
+      }
+    }
+  }
+
+  return {
+    total: retryableEvents.length,
+    byChannel: [...byChannel.entries()].map(([channel, count]) => ({ channel, count })),
+    dueNowCount,
+    waitingCount: Math.max(retryableEvents.length - dueNowCount, 0),
+    nextRetryAt
+  };
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
@@ -189,6 +219,10 @@ export function OperatorConsole({
         items: filterNotificationDeliveryEventsByScope(deliveryEvents, "sent")
       }
     ],
+    [deliveryEvents]
+  );
+  const retryableBacklogSummary = useMemo(
+    () => summarizeRetryableBacklog(deliveryEvents),
     [deliveryEvents]
   );
   const availableRunDetailProviders = useMemo(() => {
@@ -305,21 +339,36 @@ export function OperatorConsole({
     setDeliveryRuns(data.runs);
   };
 
-  const loadRunDetail = async (runId: string) => {
+  const loadRunDetail = async (
+    runId: string,
+    options: {
+      offset?: number;
+      resetFilters?: boolean;
+    } = {}
+  ) => {
     setRunDetailLoading(true);
-    setRunDetailFilter("all");
-    setRunDetailChannelFilter("all");
-    setRunDetailProviderFilter("all");
-    setRunDetailRetryCategoryFilter("all");
+    if (options.resetFilters ?? true) {
+      setRunDetailFilter("all");
+      setRunDetailChannelFilter("all");
+      setRunDetailProviderFilter("all");
+      setRunDetailRetryCategoryFilter("all");
+    }
     setSelectedRunAttemptEventIds([]);
 
     try {
-      const response = await fetch(`/api/internal/debug/notification-delivery-runs/${runId}`, {
-        headers: {
-          "x-cron-secret": token,
-          "x-operator-label": "operator-console"
-        }
+      const params = new URLSearchParams({
+        limit: String(runDetailPageSize),
+        offset: String(options.offset ?? 0)
       });
+      const response = await fetch(
+        `/api/internal/debug/notification-delivery-runs/${runId}?${params.toString()}`,
+        {
+          headers: {
+            "x-cron-secret": token,
+            "x-operator-label": "operator-console"
+          }
+        }
+      );
 
       if (!response.ok) {
         throw new Error("delivery-run-detail-load-failed");
@@ -457,7 +506,10 @@ export function OperatorConsole({
         current.filter((eventId) => !eventIds.includes(eventId))
       );
       if (selectedRunDetail) {
-        await loadRunDetail(selectedRunDetail.run.id);
+        await loadRunDetail(selectedRunDetail.run.id, {
+          offset: selectedRunDetail.page.offset,
+          resetFilters: false
+        });
       }
       setMessage(systemCopy.operator.deliveryControlSaved);
       router.refresh();
@@ -933,6 +985,44 @@ export function OperatorConsole({
                 </button>
               ) : null}
             </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              <span>
+                {selectedRunDetail.page.total === 0
+                  ? systemCopy.operator.runDetailPageEmpty
+                  : `${selectedRunDetail.page.offset + 1}-${Math.min(
+                      selectedRunDetail.page.offset + selectedRunDetail.attempts.length,
+                      selectedRunDetail.page.total
+                    )} / ${selectedRunDetail.page.total}`}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={pending || runDetailLoading || selectedRunDetail.page.offset === 0}
+                  onClick={() =>
+                    void loadRunDetail(selectedRunDetail.run.id, {
+                      offset: Math.max(selectedRunDetail.page.offset - selectedRunDetail.page.limit, 0),
+                      resetFilters: false
+                    })
+                  }
+                  className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {systemCopy.operator.previousPage}
+                </button>
+                <button
+                  type="button"
+                  disabled={pending || runDetailLoading || !selectedRunDetail.page.hasMore}
+                  onClick={() =>
+                    void loadRunDetail(selectedRunDetail.run.id, {
+                      offset: selectedRunDetail.page.offset + selectedRunDetail.page.limit,
+                      resetFilters: false
+                    })
+                  }
+                  className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {systemCopy.operator.nextPage}
+                </button>
+              </div>
+            </div>
             {!visibleRunAttempts.length ? (
               <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.runDetailEmpty}</p>
             ) : (
@@ -1080,6 +1170,43 @@ export function OperatorConsole({
           <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.deliveryEmpty}</p>
         ) : (
           <div className="grid gap-5">
+            {retryableBacklogSummary.total ? (
+              <article className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusChip
+                    label={systemCopy.operator.retryableBacklogTitle}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.retryableBacklogLabels.total} ${retryableBacklogSummary.total}`}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.retryableBacklogLabels.dueNow} ${retryableBacklogSummary.dueNowCount}`}
+                    tone="quiet"
+                  />
+                  <StatusChip
+                    label={`${systemCopy.operator.retryableBacklogLabels.waiting} ${retryableBacklogSummary.waitingCount}`}
+                    tone="quiet"
+                  />
+                  {retryableBacklogSummary.byChannel.map((bucket) => (
+                    <StatusChip
+                      key={`retryable-backlog-${bucket.channel}`}
+                      label={`${bucket.channel} ${bucket.count}`}
+                      tone="quiet"
+                    />
+                  ))}
+                </div>
+                {retryableBacklogSummary.nextRetryAt ? (
+                  <p className="mt-3 text-sm text-slate-700">
+                    <span className="font-medium text-slate-900">
+                      {systemCopy.operator.labels.nextRetryAt}
+                    </span>{" "}
+                    {formatDateTime(retryableBacklogSummary.nextRetryAt)}
+                  </p>
+                ) : null}
+              </article>
+            ) : null}
             {deliveryGroups.map((group) =>
               group.items.length ? (
                 <div key={group.key} className="grid gap-3">

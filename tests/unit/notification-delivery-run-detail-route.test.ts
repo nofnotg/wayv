@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const getNotificationDeliveryRunDetail = vi.fn();
+const getNotificationDeliveryRunDetailPage = vi.fn();
 
 vi.mock("@/lib/services/notification-delivery-attempt-log-service", () => ({
-  getNotificationDeliveryRunDetail
+  getNotificationDeliveryRunDetailPage
 }));
 
 describe("notification delivery run detail debug route", () => {
@@ -32,16 +32,29 @@ describe("notification delivery run detail debug route", () => {
   });
 
   it("returns a run and its attempts for authorized requests", async () => {
-    getNotificationDeliveryRunDetail.mockResolvedValue({
+    getNotificationDeliveryRunDetailPage.mockResolvedValue({
       run: { id: "run-1" },
-      attempts: [{ id: "attempt-1" }]
+      attempts: [{ id: "attempt-1" }],
+      aggregates: {
+        byOutcome: [],
+        byChannel: [],
+        byProvider: [],
+        byRetryCategory: [],
+        bySenderMode: []
+      },
+      page: {
+        offset: 0,
+        limit: 25,
+        total: 1,
+        hasMore: false
+      }
     });
     const { GET } = await import(
       "../../app/api/internal/debug/notification-delivery-runs/[id]/route"
     );
 
     const response = await GET(
-      new Request("http://localhost/api/internal/debug/notification-delivery-runs/run-1", {
+      new Request("http://localhost/api/internal/debug/notification-delivery-runs/run-1?limit=20&offset=40", {
         headers: {
           "x-cron-secret": "test-secret"
         }
@@ -49,7 +62,10 @@ describe("notification delivery run detail debug route", () => {
       { params: Promise.resolve({ id: "run-1" }) }
     );
 
-    expect(getNotificationDeliveryRunDetail).toHaveBeenCalledWith("run-1");
+    expect(getNotificationDeliveryRunDetailPage).toHaveBeenCalledWith("run-1", {
+      limit: 20,
+      offset: 40
+    });
     expect(response.status).toBe(200);
   });
 });

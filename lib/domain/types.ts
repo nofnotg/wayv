@@ -451,6 +451,10 @@ export type NotificationProviderRetryCategory =
   | "unknown";
 
 export type NotificationSenderMode = "noop" | "provider";
+export type NotificationProviderEnablement =
+  | "noop"
+  | "provider_disabled"
+  | "provider_enabled";
 
 export type NotificationSenderPayload = {
   channel: NotificationChannel;
@@ -489,6 +493,7 @@ export type NotificationSenderBatch = {
 
 export type NotificationSenderRegistryEntry = {
   channel: NotificationChannel;
+  enablement: NotificationProviderEnablement;
   mode: NotificationSenderMode;
   activeProviderKey: string;
   futureProviderKey: string;
@@ -605,4 +610,10 @@ export type NotificationDeliveryRunDetail = {
   run: NotificationDeliveryRunRecord;
   attempts: NotificationDeliveryAttemptLog[];
   aggregates: NotificationDeliveryAttemptAggregates;
+  page: {
+    offset: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  };
 };

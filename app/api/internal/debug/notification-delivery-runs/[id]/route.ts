@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
-import { getNotificationDeliveryRunDetail } from "@/lib/services/notification-delivery-attempt-log-service";
+import { getNotificationDeliveryRunDetailPage } from "@/lib/services/notification-delivery-attempt-log-service";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -14,7 +14,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { id } = await context.params;
-  const detail = await getNotificationDeliveryRunDetail(id);
+  const url = new URL(request.url);
+  const limit = Number(url.searchParams.get("limit") ?? "25");
+  const offset = Number(url.searchParams.get("offset") ?? "0");
+  const detail = await getNotificationDeliveryRunDetailPage(id, {
+    limit: Number.isFinite(limit) ? limit : 25,
+    offset: Number.isFinite(offset) ? offset : 0
+  });
 
   if (!detail) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });

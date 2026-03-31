@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { getNotificationSenderAdapter, prepareNotificationDeliveryBatchForSender } from "../../lib/services/notification-sender-adapter";
 import {
@@ -7,6 +7,14 @@ import {
 } from "../../lib/services/notification-sender-registry";
 
 describe("notification sender adapter", () => {
+  const previousEmailEnablement = process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED;
+  const previousPushEnablement = process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED;
+
+  afterEach(() => {
+    process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED = previousEmailEnablement;
+    process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED = previousPushEnablement;
+  });
+
   it("selects a noop adapter for each supported channel", () => {
     expect(getNotificationSenderAdapter("inapp").channel).toBe("inapp");
     expect(getNotificationSenderAdapter("inapp").adapterKey).toBe("noop-inapp");
@@ -19,6 +27,7 @@ describe("notification sender adapter", () => {
   it("keeps a clean staging boundary between noop adapters and future providers", () => {
     expect(getNotificationSenderRegistryEntry("inapp")).toMatchObject({
       channel: "inapp",
+      enablement: "noop",
       mode: "noop",
       activeProviderKey: "inapp-noop",
       providerReady: false,
@@ -26,19 +35,45 @@ describe("notification sender adapter", () => {
     });
     expect(getNotificationSenderRegistryEntry("email")).toMatchObject({
       channel: "email",
+      enablement: "provider_disabled",
       mode: "noop",
       activeProviderKey: "email-noop",
-      providerReady: false,
+      providerReady: true,
       futureProviderKey: "email-provider"
     });
     expect(getNotificationSenderRegistryEntry("push")).toMatchObject({
       channel: "push",
+      enablement: "provider_disabled",
       mode: "noop",
       activeProviderKey: "push-noop",
-      providerReady: false,
+      providerReady: true,
       futureProviderKey: "push-provider"
     });
     expect(listNotificationSenderRegistryEntries()).toHaveLength(3);
+  });
+
+  it("can switch provider-ready channels into provider mode with env enablement", () => {
+    process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED = "true";
+    process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED = "true";
+
+    expect(getNotificationSenderRegistryEntry("email")).toMatchObject({
+      channel: "email",
+      enablement: "provider_enabled",
+      mode: "provider",
+      activeProviderKey: "email-provider",
+      futureProviderKey: "email-provider",
+      providerReady: true
+    });
+    expect(getNotificationSenderRegistryEntry("push")).toMatchObject({
+      channel: "push",
+      enablement: "provider_enabled",
+      mode: "provider",
+      activeProviderKey: "push-provider",
+      futureProviderKey: "push-provider",
+      providerReady: true
+    });
+    expect(getNotificationSenderAdapter("email").adapterKey).toBe("provider-stub-email");
+    expect(getNotificationSenderAdapter("push").adapterKey).toBe("provider-stub-push");
   });
 
   it("maps a claimed batch into sender payloads", () => {

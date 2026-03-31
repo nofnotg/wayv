@@ -132,7 +132,19 @@ export async function recordNotificationDeliveryAttemptLogs(input: {
 }
 
 export async function getNotificationDeliveryRunDetail(runId: string): Promise<NotificationDeliveryRunDetail | null> {
+  return getNotificationDeliveryRunDetailPage(runId);
+}
+
+export async function getNotificationDeliveryRunDetailPage(
+  runId: string,
+  options: {
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<NotificationDeliveryRunDetail | null> {
   const supabase = createAdminSupabaseClient();
+  const limit = Math.max(1, Math.min(options.limit ?? 25, 100));
+  const offset = Math.max(0, options.offset ?? 0);
   const { data: runData, error: runError } = await supabase
     .from("notification_delivery_runs")
     .select("*")
@@ -147,17 +159,40 @@ export async function getNotificationDeliveryRunDetail(runId: string): Promise<N
     return null;
   }
 
+  const { count: totalAttempts, error: attemptCountError } = await supabase
+    .from("notification_delivery_attempt_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("run_id", runId);
+
+  if (attemptCountError) {
+    throw new Error(attemptCountError.message);
+  }
+
   const { data: attempts, error: attemptsError } = await supabase
     .from("notification_delivery_attempt_logs")
     .select("*")
     .eq("run_id", runId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .range(offset, offset + limit - 1);
 
   if (attemptsError) {
     throw new Error(attemptsError.message);
   }
 
+  const { data: aggregateAttempts, error: aggregateAttemptsError } = await supabase
+    .from("notification_delivery_attempt_logs")
+    .select(
+      "id, run_id, claim_token, event_id, channel, adapter_key, provider_key, sender_mode, external_message_id, retry_category, provider_status_code, outcome, message, created_at"
+    )
+    .eq("run_id", runId)
+    .order("created_at", { ascending: true });
+
+  if (aggregateAttemptsError) {
+    throw new Error(aggregateAttemptsError.message);
+  }
+
   const mappedAttempts = (attempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
+  const allAttempts = (aggregateAttempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
   const eventIds = [...new Set(mappedAttempts.map((attempt) => attempt.eventId))];
   let attemptsWithSnapshots = mappedAttempts;
 
@@ -180,11 +215,18 @@ export async function getNotificationDeliveryRunDetail(runId: string): Promise<N
   }
 
   const aggregates: NotificationDeliveryAttemptAggregates =
-    buildNotificationDeliveryAttemptAggregates(attemptsWithSnapshots);
+    buildNotificationDeliveryAttemptAggregates(allAttempts);
+  const total = totalAttempts ?? allAttempts.length;
 
   return {
     run: mapRunRow(runData as RunRow),
     attempts: attemptsWithSnapshots,
-    aggregates
+    aggregates,
+    page: {
+      offset,
+      limit,
+      total,
+      hasMore: offset + attemptsWithSnapshots.length < total
+    }
   };
 }
