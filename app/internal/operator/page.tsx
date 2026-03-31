@@ -2,7 +2,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { listLatestNotificationDeliveryAttemptsForEvents } from "@/lib/services/notification-delivery-attempt-log-service";
 import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
+import { listNotificationSenderRegistryEntries } from "@/lib/services/notification-sender-registry";
 import { isInternalAccessTokenValid } from "@/lib/services/internal-auth-service";
 import {
   listModerationAuditLogs,
@@ -32,15 +34,20 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     );
   }
 
-  const [reports, audits, deliveryEvents, deliveryRuns] = await Promise.all([
+  const [reports, audits, deliveryEvents, deliveryRuns, senderRegistry] = await Promise.all([
     listModerationReports(50),
     listModerationAuditLogs(20),
     listNotificationDeliveryEvents({
       limit: 24,
       states: ["pending", "operational_only", "retryable", "failed", "sent"]
     }),
-    listNotificationDeliveryRuns(8)
+    listNotificationDeliveryRuns(8),
+    Promise.resolve(listNotificationSenderRegistryEntries())
   ]);
+  const retryableEventIds = deliveryEvents
+    .filter((event) => event.state === "retryable")
+    .map((event) => event.id);
+  const retryableAttempts = await listLatestNotificationDeliveryAttemptsForEvents(retryableEventIds);
   const authorizedToken = token as string;
 
   return (
@@ -54,6 +61,8 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
         initialAudits={audits}
         initialDeliveryEvents={deliveryEvents}
         initialDeliveryRuns={deliveryRuns}
+        initialSenderRegistry={senderRegistry}
+        initialRetryableAttempts={retryableAttempts}
         token={authorizedToken}
       />
     </div>

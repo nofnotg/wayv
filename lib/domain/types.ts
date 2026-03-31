@@ -498,6 +498,9 @@ export type NotificationSenderRegistryEntry = {
   activeProviderKey: string;
   futureProviderKey: string;
   providerReady: boolean;
+  providerConfigured: boolean;
+  requiredSecrets: string[];
+  missingSecrets: string[];
 };
 
 export type NotificationSenderPreviewResult = {
@@ -615,5 +618,8 @@ export type NotificationDeliveryRunDetail = {
     limit: number;
     total: number;
     hasMore: boolean;
+    cursorType: "offset";
+    nextCursor: string | null;
+    previousCursor: string | null;
   };
 };

@@ -2,6 +2,7 @@ import type {
   NotificationChannel,
   NotificationSenderRegistryEntry
 } from "@/lib/domain/types";
+import { getNotificationProviderConfigState } from "@/lib/services/notification-provider-config-service";
 import type { NotificationSenderAdapter } from "@/lib/services/notification-sender-contract";
 import { emailProviderStubSenderAdapter } from "@/lib/services/notification-senders/email-provider-stub-sender";
 import { emailNoopSenderAdapter } from "@/lib/services/notification-senders/email-noop-sender";
@@ -58,8 +59,10 @@ export function getNotificationSenderRegistryEntry(channel: NotificationChannel)
   const base = senderRegistryBase[channel];
   const providerRequested = readEnablementFlag(channel);
   const providerReady = Boolean(base.providerAdapter);
+  const providerConfig = getNotificationProviderConfigState(channel);
+  const providerConfigured = providerReady && providerConfig.providerConfigured;
 
-  if (providerRequested && providerReady && base.providerAdapter) {
+  if (providerRequested && providerReady && providerConfigured && base.providerAdapter) {
     return {
       channel,
       enablement: "provider_enabled" as const,
@@ -67,6 +70,9 @@ export function getNotificationSenderRegistryEntry(channel: NotificationChannel)
       activeProviderKey: base.providerAdapter.providerKey,
       futureProviderKey: base.futureProviderKey,
       providerReady,
+      providerConfigured,
+      requiredSecrets: providerConfig.requiredSecrets,
+      missingSecrets: providerConfig.missingSecrets,
       adapter: base.providerAdapter
     };
   }
@@ -79,6 +85,9 @@ export function getNotificationSenderRegistryEntry(channel: NotificationChannel)
       activeProviderKey: base.noopAdapter.providerKey,
       futureProviderKey: base.futureProviderKey,
       providerReady,
+      providerConfigured,
+      requiredSecrets: providerConfig.requiredSecrets,
+      missingSecrets: providerConfig.missingSecrets,
       adapter: base.noopAdapter
     };
   }
@@ -90,6 +99,9 @@ export function getNotificationSenderRegistryEntry(channel: NotificationChannel)
     activeProviderKey: base.noopAdapter.providerKey,
     futureProviderKey: base.futureProviderKey,
     providerReady,
+    providerConfigured: providerReady && providerConfig.providerConfigured,
+    requiredSecrets: providerConfig.requiredSecrets,
+    missingSecrets: providerConfig.missingSecrets,
     adapter: base.noopAdapter
   };
 }

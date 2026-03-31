@@ -46,7 +46,10 @@ describe("notification delivery run detail debug route", () => {
         offset: 0,
         limit: 25,
         total: 1,
-        hasMore: false
+        hasMore: false,
+        cursorType: "offset",
+        nextCursor: null,
+        previousCursor: null
       }
     });
     const { GET } = await import(
@@ -64,8 +67,53 @@ describe("notification delivery run detail debug route", () => {
 
     expect(getNotificationDeliveryRunDetailPage).toHaveBeenCalledWith("run-1", {
       limit: 20,
-      offset: 40
+      offset: 40,
+      cursor: null
     });
     expect(response.status).toBe(200);
+  });
+
+  it("prefers cursor input when provided", async () => {
+    getNotificationDeliveryRunDetailPage.mockResolvedValue({
+      run: { id: "run-1" },
+      attempts: [],
+      aggregates: {
+        byOutcome: [],
+        byChannel: [],
+        byProvider: [],
+        byRetryCategory: [],
+        bySenderMode: []
+      },
+      page: {
+        offset: 25,
+        limit: 25,
+        total: 25,
+        hasMore: false,
+        cursorType: "offset",
+        nextCursor: null,
+        previousCursor: "0"
+      }
+    });
+    const { GET } = await import(
+      "../../app/api/internal/debug/notification-delivery-runs/[id]/route"
+    );
+
+    await GET(
+      new Request(
+        "http://localhost/api/internal/debug/notification-delivery-runs/run-1?limit=25&cursor=25",
+        {
+          headers: {
+            "x-cron-secret": "test-secret"
+          }
+        }
+      ) as never,
+      { params: Promise.resolve({ id: "run-1" }) }
+    );
+
+    expect(getNotificationDeliveryRunDetailPage).toHaveBeenCalledWith("run-1", {
+      limit: 25,
+      offset: 0,
+      cursor: "25"
+    });
   });
 });

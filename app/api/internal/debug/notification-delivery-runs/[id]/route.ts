@@ -17,9 +17,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const url = new URL(request.url);
   const limit = Number(url.searchParams.get("limit") ?? "25");
   const offset = Number(url.searchParams.get("offset") ?? "0");
+  const cursor = url.searchParams.get("cursor");
   const detail = await getNotificationDeliveryRunDetailPage(id, {
     limit: Number.isFinite(limit) ? limit : 25,
-    offset: Number.isFinite(offset) ? offset : 0
+    offset: Number.isFinite(offset) ? offset : 0,
+    cursor
   });
 
   if (!detail) {

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { getNotificationSenderAdapter, prepareNotificationDeliveryBatchForSender } from "../../lib/services/notification-sender-adapter";
 import {
@@ -9,10 +9,21 @@ import {
 describe("notification sender adapter", () => {
   const previousEmailEnablement = process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED;
   const previousPushEnablement = process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED;
+  const previousEmailSecret = process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET;
+  const previousPushSecret = process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_SECRET;
+
+  beforeEach(() => {
+    delete process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED;
+    delete process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED;
+    delete process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET;
+    delete process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_SECRET;
+  });
 
   afterEach(() => {
     process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED = previousEmailEnablement;
     process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED = previousPushEnablement;
+    process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET = previousEmailSecret;
+    process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_SECRET = previousPushSecret;
   });
 
   it("selects a noop adapter for each supported channel", () => {
@@ -39,6 +50,7 @@ describe("notification sender adapter", () => {
       mode: "noop",
       activeProviderKey: "email-noop",
       providerReady: true,
+      providerConfigured: false,
       futureProviderKey: "email-provider"
     });
     expect(getNotificationSenderRegistryEntry("push")).toMatchObject({
@@ -47,14 +59,41 @@ describe("notification sender adapter", () => {
       mode: "noop",
       activeProviderKey: "push-noop",
       providerReady: true,
+      providerConfigured: false,
       futureProviderKey: "push-provider"
     });
     expect(listNotificationSenderRegistryEntries()).toHaveLength(3);
   });
 
+  it("falls back safely when provider mode is enabled without the required secrets", () => {
+    process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED = "true";
+    process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED = "true";
+
+    expect(getNotificationSenderRegistryEntry("email")).toMatchObject({
+      channel: "email",
+      enablement: "provider_disabled",
+      mode: "noop",
+      activeProviderKey: "email-noop",
+      providerConfigured: false,
+      missingSecrets: ["WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET"]
+    });
+    expect(getNotificationSenderRegistryEntry("push")).toMatchObject({
+      channel: "push",
+      enablement: "provider_disabled",
+      mode: "noop",
+      activeProviderKey: "push-noop",
+      providerConfigured: false,
+      missingSecrets: ["WAYV_NOTIFICATION_PUSH_PROVIDER_SECRET"]
+    });
+    expect(getNotificationSenderAdapter("email").adapterKey).toBe("noop-email");
+    expect(getNotificationSenderAdapter("push").adapterKey).toBe("noop-push");
+  });
+
   it("can switch provider-ready channels into provider mode with env enablement", () => {
     process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_ENABLED = "true";
     process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_ENABLED = "true";
+    process.env.WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET = "email-secret";
+    process.env.WAYV_NOTIFICATION_PUSH_PROVIDER_SECRET = "push-secret";
 
     expect(getNotificationSenderRegistryEntry("email")).toMatchObject({
       channel: "email",
@@ -62,7 +101,9 @@ describe("notification sender adapter", () => {
       mode: "provider",
       activeProviderKey: "email-provider",
       futureProviderKey: "email-provider",
-      providerReady: true
+      providerReady: true,
+      providerConfigured: true,
+      missingSecrets: []
     });
     expect(getNotificationSenderRegistryEntry("push")).toMatchObject({
       channel: "push",
@@ -70,7 +111,9 @@ describe("notification sender adapter", () => {
       mode: "provider",
       activeProviderKey: "push-provider",
       futureProviderKey: "push-provider",
-      providerReady: true
+      providerReady: true,
+      providerConfigured: true,
+      missingSecrets: []
     });
     expect(getNotificationSenderAdapter("email").adapterKey).toBe("provider-stub-email");
     expect(getNotificationSenderAdapter("push").adapterKey).toBe("provider-stub-push");

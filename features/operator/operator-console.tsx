@@ -13,12 +13,13 @@ import type {
   NotificationDeliveryAttemptLog,
   NotificationDeliveryRunDetail,
   NotificationDeliveryRunRecord,
-  ModerationReportListItem,
   ModerationStatus,
   NotificationDeliveryControlAction,
   NotificationEvent,
   NotificationExecutionRunSummary,
-  NotificationProviderRetryCategory
+  NotificationProviderRetryCategory,
+  NotificationSenderRegistryEntry,
+  ModerationReportListItem
 } from "@/lib/domain/types";
 import { buildNotificationDeliveryAttemptAggregatesForOutcome } from "@/lib/services/notification-delivery-attempt-aggregation-service";
 import {
@@ -32,6 +33,8 @@ type OperatorConsoleProps = {
   initialAudits: ModerationAuditLog[];
   initialDeliveryEvents: NotificationEvent[];
   initialDeliveryRuns: NotificationDeliveryRunRecord[];
+  initialSenderRegistry: NotificationSenderRegistryEntry[];
+  initialRetryableAttempts: NotificationDeliveryAttemptLog[];
   token: string;
 };
 
@@ -144,6 +147,30 @@ function summarizeRetryableBacklog(events: NotificationEvent[]) {
   };
 }
 
+function summarizeRetryableBacklogDrilldown(attempts: NotificationDeliveryAttemptLog[]) {
+  const byProvider = new Map<string, number>();
+  const byRetryCategory = new Map<NotificationProviderRetryCategory, number>();
+  const byChannel = new Map<NotificationChannel, number>();
+
+  for (const attempt of attempts) {
+    byProvider.set(attempt.providerKey, (byProvider.get(attempt.providerKey) ?? 0) + 1);
+    byChannel.set(attempt.channel, (byChannel.get(attempt.channel) ?? 0) + 1);
+
+    if (attempt.retryCategory) {
+      byRetryCategory.set(
+        attempt.retryCategory,
+        (byRetryCategory.get(attempt.retryCategory) ?? 0) + 1
+      );
+    }
+  }
+
+  return {
+    byProvider: [...byProvider.entries()].map(([key, count]) => ({ key, count })),
+    byRetryCategory: [...byRetryCategory.entries()].map(([key, count]) => ({ key, count })),
+    byChannel: [...byChannel.entries()].map(([key, count]) => ({ key, count }))
+  };
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
@@ -153,6 +180,8 @@ export function OperatorConsole({
   initialAudits,
   initialDeliveryEvents,
   initialDeliveryRuns,
+  initialSenderRegistry,
+  initialRetryableAttempts,
   token
 }: OperatorConsoleProps) {
   const router = useRouter();
@@ -160,6 +189,8 @@ export function OperatorConsole({
   const [audits, setAudits] = useState(initialAudits);
   const [deliveryEvents, setDeliveryEvents] = useState(initialDeliveryEvents);
   const [deliveryRuns, setDeliveryRuns] = useState(initialDeliveryRuns);
+  const [senderRegistry] = useState(initialSenderRegistry);
+  const [retryableAttempts, setRetryableAttempts] = useState(initialRetryableAttempts);
   const [selectedRunDetail, setSelectedRunDetail] = useState<NotificationDeliveryRunDetail | null>(
     null
   );
@@ -225,6 +256,15 @@ export function OperatorConsole({
     () => summarizeRetryableBacklog(deliveryEvents),
     [deliveryEvents]
   );
+  const retryableBacklogDrilldown = useMemo(() => {
+    const retryableEventIds = new Set(
+      deliveryEvents.filter((event) => event.state === "retryable").map((event) => event.id)
+    );
+
+    return summarizeRetryableBacklogDrilldown(
+      retryableAttempts.filter((attempt) => retryableEventIds.has(attempt.eventId))
+    );
+  }, [deliveryEvents, retryableAttempts]);
   const availableRunDetailProviders = useMemo(() => {
     if (!selectedRunDetail) {
       return [] as string[];
@@ -321,6 +361,7 @@ export function OperatorConsole({
 
     const data = await readJson<{ events: NotificationEvent[] }>(response);
     setDeliveryEvents(data.events);
+    return data.events;
   };
 
   const reloadDeliveryRuns = async () => {
@@ -343,6 +384,7 @@ export function OperatorConsole({
     runId: string,
     options: {
       offset?: number;
+      cursor?: string | null;
       resetFilters?: boolean;
     } = {}
   ) => {
@@ -357,9 +399,14 @@ export function OperatorConsole({
 
     try {
       const params = new URLSearchParams({
-        limit: String(runDetailPageSize),
-        offset: String(options.offset ?? 0)
+        limit: String(runDetailPageSize)
       });
+
+      if (options.cursor) {
+        params.set("cursor", options.cursor);
+      } else {
+        params.set("offset", String(options.offset ?? 0));
+      }
       const response = await fetch(
         `/api/internal/debug/notification-delivery-runs/${runId}?${params.toString()}`,
         {
@@ -470,7 +517,13 @@ export function OperatorConsole({
 
       setRunSummary(data.summary);
       setDeliveryRuns((current) => [data.run, ...current].slice(0, 8));
-      await reloadDeliveryEvents();
+      const nextEvents = await reloadDeliveryEvents();
+      const retryableEventIds = new Set(
+        nextEvents.filter((event) => event.state === "retryable").map((event) => event.id)
+      );
+      setRetryableAttempts((current) =>
+        current.filter((attempt) => retryableEventIds.has(attempt.eventId))
+      );
       await loadRunDetail(data.run.id);
       setMessage(systemCopy.operator.runBatchSaved);
     });
@@ -499,7 +552,13 @@ export function OperatorConsole({
         return;
       }
 
-      await reloadDeliveryEvents();
+      const nextEvents = await reloadDeliveryEvents();
+      const retryableEventIds = new Set(
+        nextEvents.filter((event) => event.state === "retryable").map((event) => event.id)
+      );
+      setRetryableAttempts((current) =>
+        current.filter((attempt) => retryableEventIds.has(attempt.eventId))
+      );
       await reloadDeliveryRuns();
       setSelectedDeliveryEventIds((current) => current.filter((eventId) => !eventIds.includes(eventId)));
       setSelectedRunAttemptEventIds((current) =>
@@ -997,10 +1056,12 @@ export function OperatorConsole({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={pending || runDetailLoading || selectedRunDetail.page.offset === 0}
+                  disabled={
+                    pending || runDetailLoading || !selectedRunDetail.page.previousCursor
+                  }
                   onClick={() =>
                     void loadRunDetail(selectedRunDetail.run.id, {
-                      offset: Math.max(selectedRunDetail.page.offset - selectedRunDetail.page.limit, 0),
+                      cursor: selectedRunDetail.page.previousCursor,
                       resetFilters: false
                     })
                   }
@@ -1010,10 +1071,10 @@ export function OperatorConsole({
                 </button>
                 <button
                   type="button"
-                  disabled={pending || runDetailLoading || !selectedRunDetail.page.hasMore}
+                  disabled={pending || runDetailLoading || !selectedRunDetail.page.nextCursor}
                   onClick={() =>
                     void loadRunDetail(selectedRunDetail.run.id, {
-                      offset: selectedRunDetail.page.offset + selectedRunDetail.page.limit,
+                      cursor: selectedRunDetail.page.nextCursor,
                       resetFilters: false
                     })
                   }
@@ -1165,6 +1226,55 @@ export function OperatorConsole({
         )}
       </SectionCard>
 
+      <SectionCard title={"전달 연결 상태"}>
+        <div className="grid gap-3 md:grid-cols-3">
+          {senderRegistry.map((entry) => (
+            <article
+              key={`provider-readiness-${entry.channel}`}
+              className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusChip label={entry.channel} tone="quiet" />
+                <StatusChip
+                  label={
+                    entry.enablement === "provider_enabled"
+                      ? "Provider 활성 준비"
+                      : entry.enablement === "provider_disabled"
+                        ? "Provider 비활성"
+                        : "noop"
+                  }
+                  tone="quiet"
+                />
+                <StatusChip
+                  label={entry.mode === "provider" ? "실제 Provider 단계" : "연결 전 미리보기"}
+                  tone="quiet"
+                />
+              </div>
+              <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                <p>
+                  <span className="font-medium text-slate-900">현재 경로</span>{" "}
+                  {entry.activeProviderKey}
+                </p>
+                <p>
+                  <span className="font-medium text-slate-900">다음 연결 후보</span>{" "}
+                  {entry.futureProviderKey}
+                </p>
+                <p>
+                  <span className="font-medium text-slate-900">비밀값 준비</span>{" "}
+                  {entry.providerConfigured ? "준비됨" : "아직 없음"}
+                </p>
+                {entry.missingSecrets.length ? (
+                  <p>
+                    <span className="font-medium text-slate-900">필요한 비밀값</span>{" "}
+                    {entry.missingSecrets.join(", ")}
+                  </p>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      </SectionCard>
+
       <SectionCard title={systemCopy.operator.deliveryGroupsTitle}>
         {!deliveryEvents.length ? (
           <p className="text-sm leading-7 text-slate-600">{systemCopy.operator.deliveryEmpty}</p>
@@ -1189,10 +1299,26 @@ export function OperatorConsole({
                     label={`${systemCopy.operator.retryableBacklogLabels.waiting} ${retryableBacklogSummary.waitingCount}`}
                     tone="quiet"
                   />
+                  {retryableBacklogDrilldown.byProvider.map((bucket) => (
+                    <StatusChip
+                      key={`retryable-backlog-provider-${bucket.key}`}
+                      label={`전달 제공자 ${bucket.key} ${bucket.count}`}
+                      tone="quiet"
+                    />
+                  ))}
+                  {retryableBacklogDrilldown.byRetryCategory.map((bucket) => (
+                    <StatusChip
+                      key={`retryable-backlog-category-${bucket.key}`}
+                      label={`다시 시도 이유 ${
+                        systemCopy.operator.retryCategoryLabels[bucket.key]
+                      } ${bucket.count}`}
+                      tone="quiet"
+                    />
+                  ))}
                   {retryableBacklogSummary.byChannel.map((bucket) => (
                     <StatusChip
                       key={`retryable-backlog-${bucket.channel}`}
-                      label={`${bucket.channel} ${bucket.count}`}
+                      label={`채널 ${bucket.channel} ${bucket.count}`}
                       tone="quiet"
                     />
                   ))}

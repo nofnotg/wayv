@@ -140,11 +140,16 @@ export async function getNotificationDeliveryRunDetailPage(
   options: {
     limit?: number;
     offset?: number;
+    cursor?: string | null;
   } = {}
 ): Promise<NotificationDeliveryRunDetail | null> {
   const supabase = createAdminSupabaseClient();
   const limit = Math.max(1, Math.min(options.limit ?? 25, 100));
-  const offset = Math.max(0, options.offset ?? 0);
+  const parsedCursor = options.cursor ? Number.parseInt(options.cursor, 10) : Number.NaN;
+  const offset = Math.max(
+    0,
+    Number.isFinite(parsedCursor) ? parsedCursor : (options.offset ?? 0)
+  );
   const { data: runData, error: runError } = await supabase
     .from("notification_delivery_runs")
     .select("*")
@@ -226,7 +231,43 @@ export async function getNotificationDeliveryRunDetailPage(
       offset,
       limit,
       total,
-      hasMore: offset + attemptsWithSnapshots.length < total
+      hasMore: offset + attemptsWithSnapshots.length < total,
+      cursorType: "offset",
+      nextCursor: offset + attemptsWithSnapshots.length < total ? String(offset + limit) : null,
+      previousCursor: offset > 0 ? String(Math.max(offset - limit, 0)) : null
     }
   };
+}
+
+export async function listLatestNotificationDeliveryAttemptsForEvents(eventIds: string[]) {
+  if (!eventIds.length) {
+    return [] as NotificationDeliveryAttemptLog[];
+  }
+
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("notification_delivery_attempt_logs")
+    .select(
+      "id, run_id, claim_token, event_id, channel, adapter_key, provider_key, sender_mode, external_message_id, retry_category, provider_status_code, outcome, message, created_at"
+    )
+    .in("event_id", eventIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const latestByEventId = new Map<string, NotificationDeliveryAttemptLog>();
+
+  for (const row of data ?? []) {
+    const attempt = mapAttemptRow(row as AttemptLogRow);
+
+    if (!latestByEventId.has(attempt.eventId)) {
+      latestByEventId.set(attempt.eventId, attempt);
+    }
+  }
+
+  return eventIds
+    .map((eventId) => latestByEventId.get(eventId))
+    .filter((attempt): attempt is NotificationDeliveryAttemptLog => Boolean(attempt));
 }
