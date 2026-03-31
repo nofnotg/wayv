@@ -147,27 +147,60 @@ function summarizeRetryableBacklog(events: NotificationEvent[]) {
   };
 }
 
-function summarizeRetryableBacklogDrilldown(attempts: NotificationDeliveryAttemptLog[]) {
-  const byProvider = new Map<string, number>();
-  const byRetryCategory = new Map<NotificationProviderRetryCategory, number>();
-  const byChannel = new Map<NotificationChannel, number>();
+function summarizeRetryableBacklogDrilldown(
+  attempts: NotificationDeliveryAttemptLog[],
+  events: NotificationEvent[]
+) {
+  const eventMap = new Map(events.map((event) => [event.id, event]));
+  const now = Date.now();
+
+  const createBucketMap = () =>
+    new Map<string, { key: string; total: number; dueNow: number; waiting: number }>();
+  const byProvider = createBucketMap();
+  const byRetryCategory = createBucketMap();
+  const byChannel = createBucketMap();
+
+  const bumpBucket = (
+    buckets: Map<string, { key: string; total: number; dueNow: number; waiting: number }>,
+    key: string,
+    dueNow: boolean
+  ) => {
+    const current = buckets.get(key) ?? { key, total: 0, dueNow: 0, waiting: 0 };
+    current.total += 1;
+    current.dueNow += dueNow ? 1 : 0;
+    current.waiting += dueNow ? 0 : 1;
+    buckets.set(key, current);
+  };
 
   for (const attempt of attempts) {
-    byProvider.set(attempt.providerKey, (byProvider.get(attempt.providerKey) ?? 0) + 1);
-    byChannel.set(attempt.channel, (byChannel.get(attempt.channel) ?? 0) + 1);
+    const relatedEvent = eventMap.get(attempt.eventId);
+    const dueNow = Boolean(
+      relatedEvent?.nextRetryAt && new Date(relatedEvent.nextRetryAt).getTime() <= now
+    );
+
+    bumpBucket(byProvider, attempt.providerKey, dueNow);
+    bumpBucket(byChannel, attempt.channel, dueNow);
 
     if (attempt.retryCategory) {
-      byRetryCategory.set(
-        attempt.retryCategory,
-        (byRetryCategory.get(attempt.retryCategory) ?? 0) + 1
-      );
+      bumpBucket(byRetryCategory, attempt.retryCategory, dueNow);
     }
   }
 
+  const toList = (
+    buckets: Map<string, { key: string; total: number; dueNow: number; waiting: number }>
+  ) =>
+    [...buckets.values()].sort((left, right) => {
+      if (right.total === left.total) {
+        return left.key.localeCompare(right.key);
+      }
+
+      return right.total - left.total;
+    });
+
   return {
-    byProvider: [...byProvider.entries()].map(([key, count]) => ({ key, count })),
-    byRetryCategory: [...byRetryCategory.entries()].map(([key, count]) => ({ key, count })),
-    byChannel: [...byChannel.entries()].map(([key, count]) => ({ key, count }))
+    byProvider: toList(byProvider),
+    byRetryCategory: toList(byRetryCategory),
+    byChannel: toList(byChannel)
   };
 }
 
@@ -261,8 +294,11 @@ export function OperatorConsole({
       deliveryEvents.filter((event) => event.state === "retryable").map((event) => event.id)
     );
 
+    const retryableEvents = deliveryEvents.filter((event) => retryableEventIds.has(event.id));
+
     return summarizeRetryableBacklogDrilldown(
-      retryableAttempts.filter((attempt) => retryableEventIds.has(attempt.eventId))
+      retryableAttempts.filter((attempt) => retryableEventIds.has(attempt.eventId)),
+      retryableEvents
     );
   }, [deliveryEvents, retryableAttempts]);
   const availableRunDetailProviders = useMemo(() => {
@@ -1263,6 +1299,14 @@ export function OperatorConsole({
                   <span className="font-medium text-slate-900">비밀값 준비</span>{" "}
                   {entry.providerConfigured ? "준비됨" : "아직 없음"}
                 </p>
+                <p>
+                  <span className="font-medium text-slate-900">안전한 fallback</span>{" "}
+                  {entry.enablement === "provider_enabled"
+                    ? "provider-stub 경로로 유지"
+                    : entry.providerReady
+                      ? "noop 경로로 안전하게 머무름"
+                      : "noop 전용 채널"}
+                </p>
                 {entry.missingSecrets.length ? (
                   <p>
                     <span className="font-medium text-slate-900">필요한 비밀값</span>{" "}
@@ -1302,7 +1346,7 @@ export function OperatorConsole({
                   {retryableBacklogDrilldown.byProvider.map((bucket) => (
                     <StatusChip
                       key={`retryable-backlog-provider-${bucket.key}`}
-                      label={`전달 제공자 ${bucket.key} ${bucket.count}`}
+                      label={`전달 제공자 ${bucket.key} ${bucket.total} / 지금 ${bucket.dueNow}`}
                       tone="quiet"
                     />
                   ))}
@@ -1310,15 +1354,17 @@ export function OperatorConsole({
                     <StatusChip
                       key={`retryable-backlog-category-${bucket.key}`}
                       label={`다시 시도 이유 ${
-                        systemCopy.operator.retryCategoryLabels[bucket.key]
-                      } ${bucket.count}`}
+                        systemCopy.operator.retryCategoryLabels[
+                          bucket.key as NotificationProviderRetryCategory
+                        ]
+                      } ${bucket.total} / 지금 ${bucket.dueNow}`}
                       tone="quiet"
                     />
                   ))}
-                  {retryableBacklogSummary.byChannel.map((bucket) => (
+                  {retryableBacklogDrilldown.byChannel.map((bucket) => (
                     <StatusChip
-                      key={`retryable-backlog-${bucket.channel}`}
-                      label={`채널 ${bucket.channel} ${bucket.count}`}
+                      key={`retryable-backlog-${bucket.key}`}
+                      label={`채널 ${bucket.key} ${bucket.total} / 대기 ${bucket.waiting}`}
                       tone="quiet"
                     />
                   ))}

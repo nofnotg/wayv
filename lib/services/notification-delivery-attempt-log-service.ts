@@ -6,6 +6,10 @@ import type {
   NotificationExecutionRunResult
 } from "@/lib/domain/types";
 import { buildNotificationDeliveryAttemptAggregates } from "@/lib/services/notification-delivery-attempt-aggregation-service";
+import {
+  buildNotificationDeliveryRunPageMeta,
+  decodeNotificationDeliveryRunCursor,
+} from "@/lib/services/notification-delivery-run-cursor-service";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
 
 type AttemptLogRow = {
@@ -145,11 +149,9 @@ export async function getNotificationDeliveryRunDetailPage(
 ): Promise<NotificationDeliveryRunDetail | null> {
   const supabase = createAdminSupabaseClient();
   const limit = Math.max(1, Math.min(options.limit ?? 25, 100));
-  const parsedCursor = options.cursor ? Number.parseInt(options.cursor, 10) : Number.NaN;
-  const offset = Math.max(
-    0,
-    Number.isFinite(parsedCursor) ? parsedCursor : (options.offset ?? 0)
-  );
+  const decodedCursor = decodeNotificationDeliveryRunCursor(options.cursor);
+  const fallbackOffset = Math.max(0, options.offset ?? 0);
+  const offset = decodedCursor ? decodedCursor.offset : fallbackOffset;
   const { data: runData, error: runError } = await supabase
     .from("notification_delivery_runs")
     .select("*")
@@ -173,12 +175,30 @@ export async function getNotificationDeliveryRunDetailPage(
     throw new Error(attemptCountError.message);
   }
 
-  const { data: attempts, error: attemptsError } = await supabase
+  let attemptsQuery = supabase
     .from("notification_delivery_attempt_logs")
     .select("*")
-    .eq("run_id", runId)
-    .order("created_at", { ascending: true })
-    .range(offset, offset + limit - 1);
+    .eq("run_id", runId);
+
+  if (decodedCursor) {
+    const cursorFilter =
+      decodedCursor.direction === "next"
+        ? `created_at.gt.${decodedCursor.createdAt},and(created_at.eq.${decodedCursor.createdAt},id.gt.${decodedCursor.id})`
+        : `created_at.lt.${decodedCursor.createdAt},and(created_at.eq.${decodedCursor.createdAt},id.lt.${decodedCursor.id})`;
+
+    attemptsQuery = attemptsQuery
+      .or(cursorFilter)
+      .order("created_at", { ascending: decodedCursor.direction === "next" })
+      .order("id", { ascending: decodedCursor.direction === "next" })
+      .limit(limit);
+  } else {
+    attemptsQuery = attemptsQuery
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1);
+  }
+
+  const { data: attempts, error: attemptsError } = await attemptsQuery;
 
   if (attemptsError) {
     throw new Error(attemptsError.message);
@@ -197,9 +217,11 @@ export async function getNotificationDeliveryRunDetailPage(
   }
 
   const mappedAttempts = (attempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
+  const orderedAttempts =
+    decodedCursor?.direction === "previous" ? [...mappedAttempts].reverse() : mappedAttempts;
   const allAttempts = (aggregateAttempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
-  const eventIds = [...new Set(mappedAttempts.map((attempt) => attempt.eventId))];
-  let attemptsWithSnapshots = mappedAttempts;
+  const eventIds = [...new Set(orderedAttempts.map((attempt) => attempt.eventId))];
+  let attemptsWithSnapshots = orderedAttempts;
 
   if (eventIds.length) {
     const { data: eventSnapshots, error: eventSnapshotError } = await supabase
@@ -214,7 +236,7 @@ export async function getNotificationDeliveryRunDetailPage(
     const snapshotMap = new Map(
       (eventSnapshots ?? []).map((row) => [row.id, row as EventSnapshotRow])
     );
-    attemptsWithSnapshots = mappedAttempts.map((attempt) =>
+    attemptsWithSnapshots = orderedAttempts.map((attempt) =>
       applyEventSnapshot(attempt, snapshotMap.get(attempt.eventId))
     );
   }
@@ -222,20 +244,16 @@ export async function getNotificationDeliveryRunDetailPage(
   const aggregates: NotificationDeliveryAttemptAggregates =
     buildNotificationDeliveryAttemptAggregates(allAttempts);
   const total = totalAttempts ?? allAttempts.length;
-
   return {
     run: mapRunRow(runData as RunRow),
     attempts: attemptsWithSnapshots,
     aggregates,
-    page: {
+    page: buildNotificationDeliveryRunPageMeta({
+      attempts: attemptsWithSnapshots,
       offset,
       limit,
-      total,
-      hasMore: offset + attemptsWithSnapshots.length < total,
-      cursorType: "offset",
-      nextCursor: offset + attemptsWithSnapshots.length < total ? String(offset + limit) : null,
-      previousCursor: offset > 0 ? String(Math.max(offset - limit, 0)) : null
-    }
+      total
+    })
   };
 }
 
