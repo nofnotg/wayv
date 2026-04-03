@@ -5,6 +5,11 @@ import type {
   NotificationExecutionRunResult
 } from "@/lib/domain/types";
 
+type NotificationDeliveryAttemptAggregateFields = Pick<
+  NotificationDeliveryAttemptLog,
+  "outcome" | "channel" | "providerKey" | "retryCategory" | "senderMode"
+>;
+
 function toBuckets(values: Array<string | null | undefined>) {
   const counts = new Map<string, number>();
 
@@ -29,6 +34,12 @@ function toBuckets(values: Array<string | null | undefined>) {
 
 export function buildNotificationDeliveryAttemptAggregates(
   attempts: NotificationDeliveryAttemptLog[]
+): NotificationDeliveryAttemptAggregates {
+  return buildNotificationDeliveryAttemptAggregatesFromFields(attempts);
+}
+
+export function buildNotificationDeliveryAttemptAggregatesFromFields(
+  attempts: NotificationDeliveryAttemptAggregateFields[]
 ): NotificationDeliveryAttemptAggregates {
   return {
     byOutcome: toBuckets(attempts.map((attempt) => attempt.outcome)),

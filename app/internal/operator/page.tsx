@@ -4,7 +4,7 @@ import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
 import { listLatestNotificationDeliveryAttemptsForEvents } from "@/lib/services/notification-delivery-attempt-log-service";
 import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
-import { listNotificationSenderRegistryEntries } from "@/lib/services/notification-sender-registry";
+import { listNotificationProviderValidationEntries } from "@/lib/services/notification-provider-validation-service";
 import { isInternalAccessTokenValid } from "@/lib/services/internal-auth-service";
 import {
   listModerationAuditLogs,
@@ -42,7 +42,7 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
       states: ["pending", "operational_only", "retryable", "failed", "sent"]
     }),
     listNotificationDeliveryRuns(8),
-    Promise.resolve(listNotificationSenderRegistryEntries())
+    Promise.resolve(listNotificationProviderValidationEntries())
   ]);
   const retryableEventIds = deliveryEvents
     .filter((event) => event.state === "retryable")

@@ -5,7 +5,7 @@ import type {
   NotificationDeliveryRunRecord,
   NotificationExecutionRunResult
 } from "@/lib/domain/types";
-import { buildNotificationDeliveryAttemptAggregates } from "@/lib/services/notification-delivery-attempt-aggregation-service";
+import { buildNotificationDeliveryAttemptAggregatesFromFields } from "@/lib/services/notification-delivery-attempt-aggregation-service";
 import {
   buildNotificationDeliveryRunPageMeta,
   decodeNotificationDeliveryRunCursor,
@@ -47,6 +47,14 @@ type EventSnapshotRow = {
   state: NotificationDeliveryAttemptLog["currentEventState"];
   next_retry_at: string | null;
   attempt_count: number | null;
+};
+
+type AttemptAggregateRow = {
+  channel: NotificationDeliveryAttemptLog["channel"];
+  provider_key: string | null;
+  sender_mode: NotificationDeliveryAttemptLog["senderMode"] | null;
+  retry_category: NotificationDeliveryAttemptLog["retryCategory"];
+  outcome: NotificationDeliveryAttemptLog["outcome"];
 };
 
 function mapRunRow(row: RunRow): NotificationDeliveryRunRecord {
@@ -96,6 +104,33 @@ function applyEventSnapshot(
     nextRetryAt: snapshot.next_retry_at,
     attemptCount: snapshot.attempt_count ?? undefined
   };
+}
+
+async function getNotificationDeliveryRunAggregates(
+  runId: string
+): Promise<NotificationDeliveryAttemptAggregates> {
+  const supabase = createAdminSupabaseClient();
+
+  // Aggregate-heavy reads still scan a run once, but we keep that work isolated
+  // and load only the fields required for compact operator/debug summaries.
+  const { data, error } = await supabase
+    .from("notification_delivery_attempt_logs")
+    .select("channel, provider_key, sender_mode, retry_category, outcome")
+    .eq("run_id", runId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return buildNotificationDeliveryAttemptAggregatesFromFields(
+    (data ?? []).map((row) => ({
+      outcome: (row as AttemptAggregateRow).outcome,
+      channel: (row as AttemptAggregateRow).channel,
+      providerKey: (row as AttemptAggregateRow).provider_key ?? "unknown-provider",
+      retryCategory: (row as AttemptAggregateRow).retry_category,
+      senderMode: (row as AttemptAggregateRow).sender_mode ?? "noop"
+    }))
+  );
 }
 
 export async function recordNotificationDeliveryAttemptLogs(input: {
@@ -204,22 +239,9 @@ export async function getNotificationDeliveryRunDetailPage(
     throw new Error(attemptsError.message);
   }
 
-  const { data: aggregateAttempts, error: aggregateAttemptsError } = await supabase
-    .from("notification_delivery_attempt_logs")
-    .select(
-      "id, run_id, claim_token, event_id, channel, adapter_key, provider_key, sender_mode, external_message_id, retry_category, provider_status_code, outcome, message, created_at"
-    )
-    .eq("run_id", runId)
-    .order("created_at", { ascending: true });
-
-  if (aggregateAttemptsError) {
-    throw new Error(aggregateAttemptsError.message);
-  }
-
   const mappedAttempts = (attempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
   const orderedAttempts =
     decodedCursor?.direction === "previous" ? [...mappedAttempts].reverse() : mappedAttempts;
-  const allAttempts = (aggregateAttempts ?? []).map((row) => mapAttemptRow(row as AttemptLogRow));
   const eventIds = [...new Set(orderedAttempts.map((attempt) => attempt.eventId))];
   let attemptsWithSnapshots = orderedAttempts;
 
@@ -241,9 +263,8 @@ export async function getNotificationDeliveryRunDetailPage(
     );
   }
 
-  const aggregates: NotificationDeliveryAttemptAggregates =
-    buildNotificationDeliveryAttemptAggregates(allAttempts);
-  const total = totalAttempts ?? allAttempts.length;
+  const aggregates = await getNotificationDeliveryRunAggregates(runId);
+  const total = totalAttempts ?? orderedAttempts.length;
   return {
     run: mapRunRow(runData as RunRow),
     attempts: attemptsWithSnapshots,
@@ -252,7 +273,8 @@ export async function getNotificationDeliveryRunDetailPage(
       attempts: attemptsWithSnapshots,
       offset,
       limit,
-      total
+      total,
+      cursorType: decodedCursor ? "cursor" : "offset"
     })
   };
 }

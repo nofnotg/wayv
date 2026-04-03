@@ -503,6 +503,10 @@ export type NotificationSenderRegistryEntry = {
   missingSecrets: string[];
 };
 
+export type NotificationProviderValidationEntry = NotificationSenderRegistryEntry & {
+  safeFallbackBehavior: "noop";
+};
+
 export type NotificationSenderPreviewResult = {
   accepted: true;
   channel: NotificationChannel;
@@ -609,6 +613,37 @@ export type NotificationDeliveryAttemptAggregates = {
   bySenderMode: NotificationDeliveryAttemptAggregateBucket[];
 };
 
+export type NotificationRetryableBacklogBucket = {
+  key: string;
+  total: number;
+  dueNow: number;
+  waiting: number;
+};
+
+export type NotificationRetryableBacklogSummary = {
+  total: number;
+  dueNowCount: number;
+  waitingCount: number;
+  nextRetryAt: string | null;
+  byChannel: Array<{
+    channel: NotificationChannel;
+    count: number;
+  }>;
+};
+
+export type NotificationRetryableBacklogDrilldown = {
+  byProvider: NotificationRetryableBacklogBucket[];
+  byRetryCategory: NotificationRetryableBacklogBucket[];
+  byChannel: NotificationRetryableBacklogBucket[];
+};
+
+export type NotificationRetryableBacklogSnapshot = {
+  generatedAt: string;
+  events: NotificationEvent[];
+  summary: NotificationRetryableBacklogSummary;
+  drilldown: NotificationRetryableBacklogDrilldown;
+};
+
 export type NotificationDeliveryRunDetail = {
   run: NotificationDeliveryRunRecord;
   attempts: NotificationDeliveryAttemptLog[];
@@ -618,7 +653,7 @@ export type NotificationDeliveryRunDetail = {
     limit: number;
     total: number;
     hasMore: boolean;
-    cursorType: "offset";
+    cursorType: "offset" | "cursor";
     nextCursor: string | null;
     previousCursor: string | null;
   };

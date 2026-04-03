@@ -12,6 +12,7 @@ type NotificationDeliveryRunPageMetaInput = {
   offset: number;
   limit: number;
   total: number;
+  cursorType?: "offset" | "cursor";
 };
 
 export function encodeNotificationDeliveryRunCursor(
@@ -50,7 +51,7 @@ export function decodeNotificationDeliveryRunCursor(cursor: string | null | unde
 export function buildNotificationDeliveryRunPageMeta(
   input: NotificationDeliveryRunPageMetaInput
 ) {
-  const { attempts, offset, limit, total } = input;
+  const { attempts, offset, limit, total, cursorType = "offset" } = input;
   const firstAttempt = attempts[0];
   const lastAttempt = attempts[attempts.length - 1];
   const hasMore = offset + attempts.length < total;
@@ -60,7 +61,7 @@ export function buildNotificationDeliveryRunPageMeta(
     limit,
     total,
     hasMore,
-    cursorType: "offset" as const,
+    cursorType,
     nextCursor:
       lastAttempt && hasMore
         ? encodeNotificationDeliveryRunCursor({
