@@ -125,7 +125,17 @@ describe("notification delivery runner service", () => {
       eventIds: ["event-1"],
       claimToken: "claim-1"
     });
-    expect(recordNotificationDeliveryRun).toHaveBeenCalled();
+    expect(recordNotificationDeliveryRun).toHaveBeenCalledWith({
+      requestedLimit: 1,
+      summary: expect.any(Object),
+      attemptAggregates: {
+        byOutcome: [{ key: "sent", count: 1 }],
+        byChannel: [{ key: "inapp", count: 1 }],
+        byProvider: [{ key: "inapp-noop", count: 1 }],
+        byRetryCategory: [],
+        bySenderMode: [{ key: "noop", count: 1 }]
+      }
+    });
     expect(recordNotificationDeliveryAttemptLogs).toHaveBeenCalledWith({
       runId: "run-1",
       claimToken: "claim-1",
@@ -249,6 +259,32 @@ describe("notification delivery runner service", () => {
       retryableCount: 1,
       guardrailSkippedCount: 1
     });
+    expect(recordNotificationDeliveryRun).toHaveBeenCalledWith({
+      requestedLimit: undefined,
+      summary: expect.any(Object),
+      attemptAggregates: {
+        byOutcome: [
+          { key: "failed", count: 1 },
+          { key: "guardrail_skipped", count: 1 },
+          { key: "retryable", count: 1 }
+        ],
+        byChannel: [
+          { key: "email", count: 1 },
+          { key: "inapp", count: 1 },
+          { key: "push", count: 1 }
+        ],
+        byProvider: [
+          { key: "email-noop", count: 1 },
+          { key: "inapp-noop", count: 1 },
+          { key: "push-noop", count: 1 }
+        ],
+        byRetryCategory: [
+          { key: "invalid_recipient", count: 1 },
+          { key: "provider_unavailable", count: 1 }
+        ],
+        bySenderMode: [{ key: "noop", count: 3 }]
+      }
+    });
     expect(recordNotificationDeliveryAttemptLogs).toHaveBeenCalledWith({
       runId: "run-2",
       claimToken: "claim-2",
@@ -346,6 +382,17 @@ describe("notification delivery runner service", () => {
       claimToken: "claim-3",
       retryAfterMinutes: 60,
       lastError: "email-temporary"
+    });
+    expect(recordNotificationDeliveryRun).toHaveBeenCalledWith({
+      requestedLimit: undefined,
+      summary: expect.any(Object),
+      attemptAggregates: {
+        byOutcome: [{ key: "retryable", count: 1 }],
+        byChannel: [{ key: "email", count: 1 }],
+        byProvider: [{ key: "email-noop", count: 1 }],
+        byRetryCategory: [{ key: "provider_unavailable", count: 1 }],
+        bySenderMode: [{ key: "noop", count: 1 }]
+      }
     });
   });
 });

@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
+import type { NotificationProviderValidationEntry } from "@/lib/domain/types";
 import { listLatestNotificationDeliveryAttemptsForEvents } from "@/lib/services/notification-delivery-attempt-log-service";
 import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
 import { listNotificationProviderValidationEntries } from "@/lib/services/notification-provider-validation-service";
@@ -49,6 +50,7 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     .map((event) => event.id);
   const retryableAttempts = await listLatestNotificationDeliveryAttemptsForEvents(retryableEventIds);
   const authorizedToken = token as string;
+  const initialSenderRegistry = senderRegistry as NotificationProviderValidationEntry[];
 
   return (
     <div className="grid gap-6">
@@ -61,7 +63,7 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
         initialAudits={audits}
         initialDeliveryEvents={deliveryEvents}
         initialDeliveryRuns={deliveryRuns}
-        initialSenderRegistry={senderRegistry}
+        initialSenderRegistry={initialSenderRegistry}
         initialRetryableAttempts={retryableAttempts}
         token={authorizedToken}
       />

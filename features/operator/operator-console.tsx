@@ -17,8 +17,8 @@ import type {
   NotificationDeliveryControlAction,
   NotificationEvent,
   NotificationExecutionRunSummary,
+  NotificationProviderValidationEntry,
   NotificationProviderRetryCategory,
-  NotificationSenderRegistryEntry,
   ModerationReportListItem
 } from "@/lib/domain/types";
 import { buildNotificationDeliveryAttemptAggregatesForOutcome } from "@/lib/services/notification-delivery-attempt-aggregation-service";
@@ -37,7 +37,7 @@ type OperatorConsoleProps = {
   initialAudits: ModerationAuditLog[];
   initialDeliveryEvents: NotificationEvent[];
   initialDeliveryRuns: NotificationDeliveryRunRecord[];
-  initialSenderRegistry: NotificationSenderRegistryEntry[];
+  initialSenderRegistry: NotificationProviderValidationEntry[];
   initialRetryableAttempts: NotificationDeliveryAttemptLog[];
   token: string;
 };
@@ -1225,10 +1225,20 @@ export function OperatorConsole({
                       ? "noop 경로로 안전하게 머무름"
                       : "noop 전용 채널"}
                 </p>
+                <p>
+                  <span className="font-medium text-slate-900">사전 점검</span>{" "}
+                  {entry.preflightReady ? "준비됨" : "점검 필요"}
+                </p>
                 {entry.missingSecrets.length ? (
                   <p>
                     <span className="font-medium text-slate-900">필요한 비밀값</span>{" "}
                     {entry.missingSecrets.join(", ")}
+                  </p>
+                ) : null}
+                {entry.preflightWarnings.length ? (
+                  <p>
+                    <span className="font-medium text-slate-900">점검 메모</span>{" "}
+                    {entry.preflightWarnings.join(", ")}
                   </p>
                 ) : null}
               </div>

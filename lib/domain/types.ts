@@ -505,6 +505,13 @@ export type NotificationSenderRegistryEntry = {
 
 export type NotificationProviderValidationEntry = NotificationSenderRegistryEntry & {
   safeFallbackBehavior: "noop";
+  preflightReady: boolean;
+  preflightWarnings: string[];
+  preflightChecks: Array<{
+    key: "enablement" | "secrets" | "fallback";
+    passed: boolean;
+    detail: string;
+  }>;
 };
 
 export type NotificationSenderPreviewResult = {
@@ -573,6 +580,7 @@ export type NotificationDeliveryRunRecord = {
   failedCount: number;
   retryableCount: number;
   guardrailSkippedCount: number;
+  attemptAggregates?: NotificationDeliveryAttemptAggregates | null;
 };
 
 export type NotificationRetryPolicyDecision = {
@@ -639,6 +647,12 @@ export type NotificationRetryableBacklogDrilldown = {
 
 export type NotificationRetryableBacklogSnapshot = {
   generatedAt: string;
+  filters: {
+    channel: NotificationChannel | "all";
+    provider: string | "all";
+    retryCategory: NotificationProviderRetryCategory | "all";
+    timing: "all" | "due_now" | "waiting";
+  };
   events: NotificationEvent[];
   summary: NotificationRetryableBacklogSummary;
   drilldown: NotificationRetryableBacklogDrilldown;

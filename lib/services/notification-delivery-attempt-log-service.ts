@@ -10,6 +10,7 @@ import {
   buildNotificationDeliveryRunPageMeta,
   decodeNotificationDeliveryRunCursor,
 } from "@/lib/services/notification-delivery-run-cursor-service";
+import { parseNotificationDeliveryRunAggregates } from "@/lib/services/notification-delivery-run-history-service";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
 
 type AttemptLogRow = {
@@ -39,6 +40,7 @@ type RunRow = {
   failed_count: number;
   retryable_count: number;
   guardrail_skipped_count: number;
+  attempt_aggregates: NotificationDeliveryAttemptAggregates | null;
   created_at: string;
 };
 
@@ -263,7 +265,9 @@ export async function getNotificationDeliveryRunDetailPage(
     );
   }
 
-  const aggregates = await getNotificationDeliveryRunAggregates(runId);
+  const aggregates =
+    parseNotificationDeliveryRunAggregates((runData as RunRow).attempt_aggregates) ??
+    (await getNotificationDeliveryRunAggregates(runId));
   const total = totalAttempts ?? orderedAttempts.length;
   return {
     run: mapRunRow(runData as RunRow),

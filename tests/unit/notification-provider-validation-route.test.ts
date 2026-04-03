@@ -42,7 +42,10 @@ describe("notification provider validation debug route", () => {
         providerConfigured: false,
         requiredSecrets: ["WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET"],
         missingSecrets: ["WAYV_NOTIFICATION_EMAIL_PROVIDER_SECRET"],
-        safeFallbackBehavior: "noop"
+        safeFallbackBehavior: "noop",
+        preflightReady: false,
+        preflightWarnings: ["missing-secrets"],
+        preflightChecks: []
       }
     ]);
 

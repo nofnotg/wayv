@@ -1,9 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildRetryableBacklogDrilldown,
   buildRetryableBacklogSummary
 } from "../../lib/services/notification-delivery-backlog-summary-service";
+import { getNotificationRetryableBacklogSnapshot } from "../../lib/services/notification-delivery-observability-service";
+
+const {
+  listNotificationDeliveryEvents,
+  listLatestNotificationDeliveryAttemptsForEvents
+} = vi.hoisted(() => ({
+  listNotificationDeliveryEvents: vi.fn(),
+  listLatestNotificationDeliveryAttemptsForEvents: vi.fn()
+}));
+
+vi.mock("@/lib/services/notification-delivery-service", () => ({
+  listNotificationDeliveryEvents
+}));
+
+vi.mock("@/lib/services/notification-delivery-attempt-log-service", () => ({
+  listLatestNotificationDeliveryAttemptsForEvents
+}));
 
 describe("notification delivery observability service", () => {
   const events = [
@@ -103,5 +120,34 @@ describe("notification delivery observability service", () => {
         { key: "provider_unavailable", total: 1, dueNow: 1, waiting: 0 }
       ])
     );
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("applies compact backlog filters while preserving the summary shape", async () => {
+    listNotificationDeliveryEvents.mockResolvedValue(events);
+    listLatestNotificationDeliveryAttemptsForEvents.mockResolvedValue(attempts);
+
+    const snapshot = await getNotificationRetryableBacklogSnapshot({
+      filters: {
+        channel: "email",
+        provider: "email-noop",
+        retryCategory: "rate_limited",
+        timing: "waiting"
+      }
+    });
+
+    expect(snapshot.filters).toEqual({
+      channel: "email",
+      provider: "email-noop",
+      retryCategory: "rate_limited",
+      timing: "waiting"
+    });
+    expect(snapshot.summary.total).toBe(1);
+    expect(snapshot.drilldown.byProvider).toEqual([
+      { key: "email-noop", total: 1, dueNow: 0, waiting: 1 }
+    ]);
   });
 });

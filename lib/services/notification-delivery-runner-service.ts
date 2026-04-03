@@ -3,6 +3,7 @@ import type {
   NotificationExecutionRunResult,
   NotificationExecutionRunSummary
 } from "@/lib/domain/types";
+import { buildNotificationDeliveryAttemptAggregatesFromFields } from "@/lib/services/notification-delivery-attempt-aggregation-service";
 import { recordNotificationDeliveryAttemptLogs } from "@/lib/services/notification-delivery-attempt-log-service";
 import { recordNotificationDeliveryRun } from "@/lib/services/notification-delivery-run-history-service";
 import {
@@ -188,7 +189,16 @@ export async function runNotificationDeliveryBatch(
 
   const run = await recordNotificationDeliveryRun({
     requestedLimit: input.limit,
-    summary
+    summary,
+    attemptAggregates: buildNotificationDeliveryAttemptAggregatesFromFields(
+      results.map((result) => ({
+        outcome: result.outcome,
+        channel: result.channel,
+        providerKey: result.providerKey,
+        retryCategory: result.retryCategory,
+        senderMode: result.senderMode
+      }))
+    )
   });
   await recordNotificationDeliveryAttemptLogs({
     runId: run.id,

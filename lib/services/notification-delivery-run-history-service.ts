@@ -1,4 +1,5 @@
 import type {
+  NotificationDeliveryAttemptAggregates,
   NotificationDeliveryRunRecord,
   NotificationExecutionRunSummary
 } from "@/lib/domain/types";
@@ -14,8 +15,50 @@ type DeliveryRunRow = {
   failed_count: number;
   retryable_count: number;
   guardrail_skipped_count: number;
+  attempt_aggregates: NotificationDeliveryAttemptAggregates | null;
   created_at: string;
 };
+
+function normalizeAggregateBuckets(
+  buckets: unknown
+): NotificationDeliveryAttemptAggregates["byOutcome"] {
+  if (!Array.isArray(buckets)) {
+    return [];
+  }
+
+  return buckets
+    .filter(
+      (bucket): bucket is { key: string; count: number } =>
+        Boolean(
+          bucket &&
+            typeof bucket === "object" &&
+            typeof (bucket as { key?: unknown }).key === "string" &&
+            typeof (bucket as { count?: unknown }).count === "number"
+        )
+    )
+    .map((bucket) => ({
+      key: bucket.key,
+      count: bucket.count
+    }));
+}
+
+export function parseNotificationDeliveryRunAggregates(
+  value: unknown
+): NotificationDeliveryAttemptAggregates | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const raw = value as Partial<Record<keyof NotificationDeliveryAttemptAggregates, unknown>>;
+
+  return {
+    byOutcome: normalizeAggregateBuckets(raw.byOutcome),
+    byChannel: normalizeAggregateBuckets(raw.byChannel),
+    byProvider: normalizeAggregateBuckets(raw.byProvider),
+    byRetryCategory: normalizeAggregateBuckets(raw.byRetryCategory),
+    bySenderMode: normalizeAggregateBuckets(raw.bySenderMode)
+  };
+}
 
 function mapDeliveryRunRow(row: DeliveryRunRow): NotificationDeliveryRunRecord {
   return {
@@ -27,13 +70,15 @@ function mapDeliveryRunRow(row: DeliveryRunRow): NotificationDeliveryRunRecord {
     sentCount: row.sent_count,
     failedCount: row.failed_count,
     retryableCount: row.retryable_count,
-    guardrailSkippedCount: row.guardrail_skipped_count
+    guardrailSkippedCount: row.guardrail_skipped_count,
+    attemptAggregates: parseNotificationDeliveryRunAggregates(row.attempt_aggregates)
   };
 }
 
 export async function recordNotificationDeliveryRun(input: {
   requestedLimit?: number;
   summary: NotificationExecutionRunSummary;
+  attemptAggregates?: NotificationDeliveryAttemptAggregates | null;
 }) {
   const supabase = createAdminSupabaseClient();
   const { data, error } = await supabase
@@ -46,7 +91,8 @@ export async function recordNotificationDeliveryRun(input: {
       sent_count: input.summary.sentCount,
       failed_count: input.summary.failedCount,
       retryable_count: input.summary.retryableCount,
-      guardrail_skipped_count: input.summary.guardrailSkippedCount
+      guardrail_skipped_count: input.summary.guardrailSkippedCount,
+      attempt_aggregates: input.attemptAggregates ?? null
     })
     .select("*")
     .single();
