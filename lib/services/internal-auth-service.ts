@@ -10,6 +10,7 @@ type RequestLike = {
 export type InternalRequestContext = {
   authorized: boolean;
   actorLabel: string;
+  viewerUserId?: string | null;
 };
 
 export function isInternalAccessTokenValid(token: string | null | undefined) {
@@ -89,7 +90,8 @@ export async function getInternalRequestContext(
   if (isInternalRequestAuthorized(request)) {
     return {
       authorized: true,
-      actorLabel: getInternalActorLabel(request.headers.get("x-operator-label"))
+      actorLabel: getInternalActorLabel(request.headers.get("x-operator-label")),
+      viewerUserId: null
     };
   }
 
@@ -97,12 +99,14 @@ export async function getInternalRequestContext(
   if (operator) {
     return {
       authorized: true,
-      actorLabel: operator.actorLabel
+      actorLabel: operator.actorLabel,
+      viewerUserId: operator.userId
     };
   }
 
   return {
     authorized: false,
-    actorLabel: getInternalActorLabel(request.headers.get("x-operator-label"))
+    actorLabel: getInternalActorLabel(request.headers.get("x-operator-label")),
+    viewerUserId: null
   };
 }

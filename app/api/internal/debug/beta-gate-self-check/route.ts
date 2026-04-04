@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   }
 
   const selfCheck = await getBetaDeploymentSelfCheck({
-    requestUrl: request.url
+    requestUrl: request.url,
+    viewerUserId: internal.viewerUserId ?? null
   });
 
   return NextResponse.json({

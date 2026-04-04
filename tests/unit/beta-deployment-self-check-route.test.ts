@@ -17,7 +17,11 @@ describe("beta deployment self-check route", () => {
   });
 
   it("blocks self-check access when unauthorized", async () => {
-    getInternalRequestContext.mockResolvedValue({ authorized: false, actorLabel: "guest" });
+    getInternalRequestContext.mockResolvedValue({
+      authorized: false,
+      actorLabel: "guest",
+      viewerUserId: null
+    });
     const { GET } = await import("../../app/api/internal/debug/beta-gate-self-check/route");
 
     const response = await GET(
@@ -28,7 +32,11 @@ describe("beta deployment self-check route", () => {
   });
 
   it("returns the compact self-check object for internal requests", async () => {
-    getInternalRequestContext.mockResolvedValue({ authorized: true, actorLabel: "operator" });
+    getInternalRequestContext.mockResolvedValue({
+      authorized: true,
+      actorLabel: "operator",
+      viewerUserId: "viewer-1"
+    });
     getBetaDeploymentSelfCheck.mockResolvedValue({
       checkedAt: "2026-04-04T10:00:00.000Z",
       request: {
@@ -68,7 +76,8 @@ describe("beta deployment self-check route", () => {
     );
 
     expect(getBetaDeploymentSelfCheck).toHaveBeenCalledWith({
-      requestUrl: "http://localhost/api/internal/debug/beta-gate-self-check"
+      requestUrl: "http://localhost/api/internal/debug/beta-gate-self-check",
+      viewerUserId: "viewer-1"
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
