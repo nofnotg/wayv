@@ -18,6 +18,23 @@ const summarizeProductEvents = vi.fn();
 const listRecentContentGuardrailFlags = vi.fn();
 const summarizeContentGuardrailFlags = vi.fn();
 const getSeedContentStatus = vi.fn();
+const getBetaDeploymentSelfCheck = vi.fn();
+
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue({
+    get: (key: string) => {
+      if (key === "x-forwarded-host" || key === "host") {
+        return "wayv.app";
+      }
+
+      if (key === "x-forwarded-proto") {
+        return "https";
+      }
+
+      return null;
+    }
+  })
+}));
 
 vi.mock("@/components/layout/page-header", () => ({
   PageHeader: ({ title, description }: { title: string; description?: string }) => (
@@ -29,7 +46,22 @@ vi.mock("@/components/layout/page-header", () => ({
 }));
 
 vi.mock("@/components/section-card", () => ({
-  SectionCard: ({ children }: { children: React.ReactNode }) => <section>{children}</section>
+  SectionCard: ({
+    children,
+    title
+  }: {
+    children: React.ReactNode;
+    title?: string;
+  }) => (
+    <section>
+      {title ? <h2>{title}</h2> : null}
+      {children}
+    </section>
+  )
+}));
+
+vi.mock("@/components/status-chip", () => ({
+  StatusChip: ({ label }: { label: string }) => <span>{label}</span>
 }));
 
 vi.mock("@/features/operator/operator-console", () => ({
@@ -84,6 +116,10 @@ vi.mock("@/lib/services/seed-content-service", () => ({
   getSeedContentStatus
 }));
 
+vi.mock("@/lib/services/beta-deployment-self-check-service", () => ({
+  getBetaDeploymentSelfCheck
+}));
+
 describe("operator page", () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -132,10 +168,44 @@ describe("operator page", () => {
       batches: [],
       authorTypes: []
     });
+    getBetaDeploymentSelfCheck.mockResolvedValue({
+      checkedAt: "2026-04-04T10:00:00.000Z",
+      request: {
+        origin: "https://wayv.app",
+        host: "wayv.app"
+      },
+      envReadiness: {
+        status: "ready",
+        summary: "배포 환경값이 준비돼 있어요.",
+        checks: {},
+        appOrigin: "https://wayv.app",
+        authRedirectOrigin: "https://wayv.app"
+      },
+      authFlowReadiness: {
+        status: "ready_with_caution",
+        summary: "인증 흐름을 한 번 더 확인해 주세요.",
+        checks: {}
+      },
+      operatorBootstrapReadiness: {
+        status: "ready",
+        summary: "운영자 seed가 확인돼요.",
+        checks: {}
+      },
+      reviewExportReadiness: {
+        status: "ready",
+        summary: "검토/export 경로가 준비돼 있어요.",
+        checks: {}
+      },
+      overallStatus: "ready_with_caution",
+      notes: ["노트"]
+    });
 
     const { default: OperatorPage } = await import("../../app/internal/operator/page");
     const html = renderToStaticMarkup(await OperatorPage());
 
     expect(html).toContain("operator-console");
+    expect(html).toContain("배포 베타 점검");
+    expect(html).toContain("배포 환경");
+    expect(html).toContain("overall ready with caution");
   });
 });

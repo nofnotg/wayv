@@ -47,3 +47,19 @@
    - non-operator denied
    - seeded operator allowed
    - review/export routes usable
+
+## In-app self-check after deploy
+1. Open `/internal/operator` with an operator account.
+2. Check the `배포 베타 점검` block:
+   - `배포 환경`
+   - `인증 흐름`
+   - `운영자 bootstrap`
+   - `검토/export`
+3. If deeper inspection is needed, call:
+   - `GET /api/internal/debug/beta-gate-self-check`
+4. Confirm these booleans without exposing secrets:
+   - public env present
+   - cron/service-role present
+   - `internal_operators` reachable
+   - first operator seeded
+   - beta feedback / product events / content guardrail review queries reachable
