@@ -89,6 +89,16 @@ describe("operator page", () => {
     vi.clearAllMocks();
   });
 
+  it("shows a guarded state for logged-out viewers", async () => {
+    getViewerContext.mockResolvedValue(null);
+
+    const { default: OperatorPage } = await import("../../app/internal/operator/page");
+    const html = renderToStaticMarkup(await OperatorPage());
+
+    expect(html).toContain("운영자 계정이 필요해요");
+    expect(html).not.toContain("operator-console");
+  });
+
   it("shows a guarded state for non-operators", async () => {
     getViewerContext.mockResolvedValue({ userId: "viewer-1" });
     getOperatorAccess.mockResolvedValue(null);
@@ -96,7 +106,7 @@ describe("operator page", () => {
     const { default: OperatorPage } = await import("../../app/internal/operator/page");
     const html = renderToStaticMarkup(await OperatorPage());
 
-    expect(html).toContain("계정");
+    expect(html).toContain("운영자 계정이 필요해요");
     expect(html).not.toContain("operator-console");
   });
 
