@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import { updatePostModerationStatus } from "@/lib/services/moderation-admin-service";
@@ -9,7 +9,7 @@ type RouteProps = {
 };
 
 export async function PATCH(request: NextRequest, { params }: RouteProps) {
-  const internal = getInternalRequestContext(request);
+  const internal = await getInternalRequestContext(request);
   if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -36,3 +36,4 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
     );
   }
 }
+

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
 
 export async function GET(request: NextRequest) {
-  const internal = getInternalRequestContext(request);
+  const internal = await getInternalRequestContext(request);
   if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -17,3 +17,4 @@ export async function GET(request: NextRequest) {
     runs
   });
 }
+

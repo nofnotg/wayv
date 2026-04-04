@@ -61,12 +61,42 @@ export async function recordProductEventSafe(input: {
 }
 
 export async function listRecentProductEvents(limit = 30) {
+  return listProductEvents({
+    limit
+  });
+}
+
+export async function listProductEvents(filters?: {
+  limit?: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  eventKey?: ProductEventKey | null;
+  isSeed?: boolean | null;
+}) {
   const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("product_event_logs")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(Math.max(1, Math.min(filters?.limit ?? 30, 200)));
+
+  if (filters?.dateFrom) {
+    query = query.gte("created_at", filters.dateFrom);
+  }
+
+  if (filters?.dateTo) {
+    query = query.lte("created_at", filters.dateTo);
+  }
+
+  if (filters?.eventKey) {
+    query = query.eq("event_key", filters.eventKey);
+  }
+
+  if (typeof filters?.isSeed === "boolean") {
+    query = query.eq("is_seed", filters.isSeed);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);

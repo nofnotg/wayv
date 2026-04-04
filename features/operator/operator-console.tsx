@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, useTransition } from "react";
 
@@ -63,7 +63,6 @@ type OperatorConsoleProps = {
     batches: string[];
     authorTypes: SeedAuthorType[];
   };
-  token: string;
 };
 
 const statusOptions: ModerationStatus[] = ["active", "under_review", "limited", "removed"];
@@ -149,55 +148,55 @@ function resolveActionableEventIds(groupEventIds: string[], selectedIds: string[
 function getFeedbackCategoryLabel(category: BetaFeedbackCategory) {
   switch (category) {
     case "bug":
-      return "버그";
+      return "踰꾧렇";
     case "confusing":
-      return "헷갈림";
+      return "혼란";
     case "suggestion":
-      return "제안";
+      return "?쒖븞";
     case "emotional_discomfort":
-      return "정서적 불편";
+      return "?뺤꽌??遺덊렪";
     case "exit_reason":
-      return "이탈 이유";
+      return "?댄깉 ?댁쑀";
   }
 }
 
 function getProductEventLabel(eventKey: ProductEventKey) {
   switch (eventKey) {
     case "signup_started":
-      return "가입 시작";
+      return "媛???쒖옉";
     case "signup_completed":
-      return "가입 완료";
+      return "媛???꾨즺";
     case "onboarding_completed":
-      return "온보딩 완료";
+      return "?⑤낫???꾨즺";
     case "post_created":
-      return "글 작성";
+      return "湲 ?묒꽦";
     case "comment_created":
-      return "댓글 작성";
+      return "?볤? ?묒꽦";
     case "reaction_added":
-      return "반응 추가";
+      return "諛섏쓳 異붽?";
     case "rest_mode_started":
-      return "휴식 모드 시작";
+      return "?댁떇 紐⑤뱶 ?쒖옉";
     case "rest_mode_ended":
-      return "휴식 모드 종료";
+      return "?댁떇 紐⑤뱶 醫낅즺";
     case "feedback_submitted":
-      return "피드백 제출";
+      return "?쇰뱶諛??쒖텧";
   }
 }
 
 function getGuardrailReasonLabel(reason: ContentGuardrailReason) {
   switch (reason) {
     case "profanity":
-      return "욕설";
+      return "?뺤꽕";
     case "contact_info":
       return "연락처";
     case "spam_link":
-      return "링크/홍보";
+      return "留곹겕/?띾낫";
     case "repeated_characters":
-      return "반복 문자";
+      return "諛섎났 臾몄옄";
     case "repeated_tokens":
-      return "반복 단어";
+      return "諛섎났 ?⑥뼱";
     case "high_risk_keyword":
-      return "고위험 단어";
+      return "怨좎쐞???⑥뼱";
   }
 }
 
@@ -218,8 +217,7 @@ export function OperatorConsole({
   initialProductEventSummary,
   initialGuardrailFlags,
   initialGuardrailSummary,
-  initialSeedContentStatus,
-  token
+  initialSeedContentStatus
 }: OperatorConsoleProps) {
   const router = useRouter();
   const [reports, setReports] = useState(initialReports);
@@ -396,7 +394,6 @@ export function OperatorConsole({
       "/api/internal/debug/notification-delivery?limit=24&state=pending&state=operational_only&state=retryable&state=failed&state=sent",
       {
         headers: {
-          "x-cron-secret": token,
           "x-operator-label": "operator-console"
         }
       }
@@ -414,7 +411,6 @@ export function OperatorConsole({
   const reloadDeliveryRuns = async () => {
     const response = await fetch("/api/internal/debug/notification-delivery-runs?limit=8", {
       headers: {
-        "x-cron-secret": token,
         "x-operator-label": "operator-console"
       }
     });
@@ -458,7 +454,6 @@ export function OperatorConsole({
         `/api/internal/debug/notification-delivery-runs/${runId}?${params.toString()}`,
         {
           headers: {
-            "x-cron-secret": token,
             "x-operator-label": "operator-console"
           }
         }
@@ -490,7 +485,6 @@ export function OperatorConsole({
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-secret": token,
           "x-operator-label": "operator-console"
         },
         body: JSON.stringify({ status })
@@ -542,7 +536,6 @@ export function OperatorConsole({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-secret": token,
           "x-operator-label": "operator-console"
         },
         body: JSON.stringify({
@@ -585,7 +578,6 @@ export function OperatorConsole({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-secret": token,
           "x-operator-label": "operator-console"
         },
         body: JSON.stringify({
@@ -634,7 +626,33 @@ export function OperatorConsole({
         </p>
       ) : null}
 
-      <SectionCard title="베타 준비 신호">
+      <SectionCard title="踰좏? 以鍮??좏샇">
+        <div className="mb-4 flex flex-wrap gap-2 text-sm text-slate-600">
+          <a
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900"
+            href="/api/internal/review/beta-feedback?format=json&limit=100"
+            target="_blank"
+            rel="noreferrer"
+          >
+            피드백 검토 JSON
+          </a>
+          <a
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900"
+            href="/api/internal/review/product-events?format=csv&limit=200"
+            target="_blank"
+            rel="noreferrer"
+          >
+            이벤트 내보내기 CSV
+          </a>
+          <a
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900"
+            href="/api/internal/review/content-guardrails?format=json&limit=100"
+            target="_blank"
+            rel="noreferrer"
+          >
+            가드레일 검토 JSON
+          </a>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
             <div className="flex flex-wrap gap-2">
@@ -658,14 +676,14 @@ export function OperatorConsole({
                   </p>
                 ))
               ) : (
-                <p>아직 들어온 피드백이 없습니다.</p>
+                <p>?꾩쭅 ?ㅼ뼱???쇰뱶諛깆씠 ?놁뒿?덈떎.</p>
               )}
             </div>
           </article>
 
           <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
             <div className="flex flex-wrap gap-2">
-              <StatusChip label="최근 제품 이벤트" tone="quiet" />
+              <StatusChip label="최근 이벤트" tone="quiet" />
               {productEventSummary.slice(0, 4).map((item) => (
                 <StatusChip
                   key={`event-${item.eventKey}`}
@@ -692,7 +710,7 @@ export function OperatorConsole({
               {guardrailSummary.byAction.map((item) => (
                 <StatusChip
                   key={`guardrail-action-${item.action}`}
-                  label={`${item.action === "block" ? "차단" : "통과 후 확인"} ${item.count}`}
+                  label={`${item.action === "block" ? "李⑤떒" : "?듦낵 ???뺤씤"} ${item.count}`}
                   tone={item.action === "block" ? "active" : "quiet"}
                 />
               ))}
@@ -710,9 +728,9 @@ export function OperatorConsole({
               {guardrailFlags.slice(0, 3).map((item) => (
                 <p key={item.id}>
                   <span className="font-medium text-slate-900">
-                    {item.action === "block" ? "차단" : "통과 후 확인"}
+                    {item.action === "block" ? "李⑤떒" : "?듦낵 ???뺤씤"}
                   </span>{" "}
-                  {item.contentExcerpt ?? "내용 일부 없음"}
+                  {item.contentExcerpt ?? "?댁슜 ?쇰? ?놁쓬"}
                 </p>
               ))}
             </div>
@@ -721,21 +739,21 @@ export function OperatorConsole({
           <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
             <div className="flex flex-wrap gap-2">
               <StatusChip label="시드 콘텐츠" tone="quiet" />
-              <StatusChip label={`전체 ${seedContentStatus.total}`} tone="quiet" />
-              <StatusChip label={`공개 ${seedContentStatus.publicCount}`} tone="quiet" />
+              <StatusChip label={`?꾩껜 ${seedContentStatus.total}`} tone="quiet" />
+              <StatusChip label={`怨듦컻 ${seedContentStatus.publicCount}`} tone="quiet" />
             </div>
             <div className="mt-4 grid gap-2 text-sm text-slate-700">
               <p>
-                <span className="font-medium text-slate-900">최근 배치</span>{" "}
-                {seedContentStatus.batches[0] ?? "없음"}
+                <span className="font-medium text-slate-900">理쒓렐 諛곗튂</span>{" "}
+                {seedContentStatus.batches[0] ?? "?놁쓬"}
               </p>
               <p>
-                <span className="font-medium text-slate-900">최근 입력</span>{" "}
-                {seedContentStatus.latestSeedAt ? formatDateTime(seedContentStatus.latestSeedAt) : "없음"}
+                <span className="font-medium text-slate-900">理쒓렐 ?낅젰</span>{" "}
+                {seedContentStatus.latestSeedAt ? formatDateTime(seedContentStatus.latestSeedAt) : "?놁쓬"}
               </p>
               <p>
-                <span className="font-medium text-slate-900">작성자 유형</span>{" "}
-                {seedContentStatus.authorTypes.length ? seedContentStatus.authorTypes.join(", ") : "없음"}
+                <span className="font-medium text-slate-900">?묒꽦???좏삎</span>{" "}
+                {seedContentStatus.authorTypes.length ? seedContentStatus.authorTypes.join(", ") : "?놁쓬"}
               </p>
             </div>
           </article>
@@ -871,7 +889,7 @@ export function OperatorConsole({
                             label={systemCopy.operator.statusLabels[audit.previousStatus]}
                             tone="quiet"
                           />
-                          <span className="text-slate-400">→</span>
+                          <span className="text-slate-400">-&gt;</span>
                           <StatusChip
                             label={systemCopy.operator.statusLabels[audit.nextStatus]}
                             tone={audit.nextStatus === "removed" ? "active" : "quiet"}
@@ -925,7 +943,7 @@ export function OperatorConsole({
           <span className="text-xs text-slate-500">
             {deliveryAnalytics.latestAttemptAt
               ? `${systemCopy.operator.labels.attempt} ${formatDateTime(deliveryAnalytics.latestAttemptAt)}`
-              : `${systemCopy.operator.labels.attempt} 기록이 아직 없어요.`}
+              : `${systemCopy.operator.labels.attempt} 湲곕줉???꾩쭅 ?놁뼱??`}
           </span>
         </div>
       </SectionCard>
@@ -1148,7 +1166,7 @@ export function OperatorConsole({
                 className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700"
               >
                 <option value="all">
-                  {systemCopy.operator.labels.channel} · {systemCopy.operator.filterAll}
+                  {systemCopy.operator.labels.channel} 쨌 {systemCopy.operator.filterAll}
                 </option>
                 <option value="inapp">inapp</option>
                 <option value="email">email</option>
@@ -1160,7 +1178,7 @@ export function OperatorConsole({
                 className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700"
               >
                 <option value="all">
-                  {systemCopy.operator.labels.provider} · {systemCopy.operator.filterAll}
+                  {systemCopy.operator.labels.provider} 쨌 {systemCopy.operator.filterAll}
                 </option>
                 {availableRunDetailProviders.map((providerKey) => (
                   <option key={providerKey} value={providerKey}>
@@ -1178,7 +1196,7 @@ export function OperatorConsole({
                 className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700"
               >
                 <option value="all">
-                  {systemCopy.operator.labels.retryCategory} · {systemCopy.operator.filterAll}
+                  {systemCopy.operator.labels.retryCategory} 쨌 {systemCopy.operator.filterAll}
                 </option>
                 {availableRunDetailRetryCategories.map((retryCategory) => (
                   <option key={retryCategory} value={retryCategory}>
@@ -1381,7 +1399,7 @@ export function OperatorConsole({
         )}
       </SectionCard>
 
-      <SectionCard title={"전달 연결 상태"}>
+      <SectionCard title={"?꾨떖 ?곌껐 ?곹깭"}>
         <div className="grid gap-3 md:grid-cols-3">
           {senderRegistry.map((entry) => (
             <article
@@ -1401,34 +1419,34 @@ export function OperatorConsole({
                   tone="quiet"
                 />
                 <StatusChip
-                  label={entry.mode === "provider" ? "실제 Provider 단계" : "연결 전 미리보기"}
+                  label={entry.mode === "provider" ? "?ㅼ젣 Provider ?④퀎" : "?곌껐 ??誘몃━蹂닿린"}
                   tone="quiet"
                 />
               </div>
               <div className="mt-4 grid gap-2 text-sm text-slate-700">
                 <p>
-                  <span className="font-medium text-slate-900">현재 경로</span>{" "}
+                  <span className="font-medium text-slate-900">?꾩옱 寃쎈줈</span>{" "}
                   {entry.activeProviderKey}
                 </p>
                 <p>
-                  <span className="font-medium text-slate-900">다음 연결 후보</span>{" "}
+                  <span className="font-medium text-slate-900">?ㅼ쓬 ?곌껐 ?꾨낫</span>{" "}
                   {entry.futureProviderKey}
                 </p>
                 <p>
                   <span className="font-medium text-slate-900">비밀값 준비</span>{" "}
-                  {entry.providerConfigured ? "준비됨" : "아직 없음"}
+                  {entry.providerConfigured ? "以鍮꾨맖" : "?꾩쭅 ?놁쓬"}
                 </p>
                 <p>
-                  <span className="font-medium text-slate-900">안전한 fallback</span>{" "}
+                  <span className="font-medium text-slate-900">?덉쟾??fallback</span>{" "}
                   {entry.enablement === "provider_enabled"
-                    ? "provider-stub 경로로 유지"
+                    ? "provider-stub 寃쎈줈濡??좎?"
                     : entry.providerReady
-                      ? "noop 경로로 안전하게 머무름"
-                      : "noop 전용 채널"}
+                      ? "noop 경로로 안전하게 머무르기"
+                      : "noop ?꾩슜 梨꾨꼸"}
                 </p>
                 <p>
-                  <span className="font-medium text-slate-900">사전 점검</span>{" "}
-                  {entry.preflightReady ? "준비됨" : "점검 필요"}
+                  <span className="font-medium text-slate-900">?ъ쟾 ?먭?</span>{" "}
+                  {entry.preflightReady ? "以鍮꾨맖" : "?먭? ?꾩슂"}
                 </p>
                 {entry.missingSecrets.length ? (
                   <p>
@@ -1438,7 +1456,7 @@ export function OperatorConsole({
                 ) : null}
                 {entry.preflightWarnings.length ? (
                   <p>
-                    <span className="font-medium text-slate-900">점검 메모</span>{" "}
+                    <span className="font-medium text-slate-900">?먭? 硫붾え</span>{" "}
                     {entry.preflightWarnings.join(", ")}
                   </p>
                 ) : null}
@@ -1475,25 +1493,25 @@ export function OperatorConsole({
                   {retryableBacklogDrilldown.byProvider.map((bucket) => (
                     <StatusChip
                       key={`retryable-backlog-provider-${bucket.key}`}
-                      label={`전달 제공자 ${bucket.key} ${bucket.total} / 지금 ${bucket.dueNow}`}
+                      label={`?꾨떖 ?쒓났??${bucket.key} ${bucket.total} / 吏湲?${bucket.dueNow}`}
                       tone="quiet"
                     />
                   ))}
                   {retryableBacklogDrilldown.byRetryCategory.map((bucket) => (
                     <StatusChip
                       key={`retryable-backlog-category-${bucket.key}`}
-                      label={`다시 시도 이유 ${
+                      label={`?ㅼ떆 ?쒕룄 ?댁쑀 ${
                         systemCopy.operator.retryCategoryLabels[
                           bucket.key as NotificationProviderRetryCategory
                         ]
-                      } ${bucket.total} / 지금 ${bucket.dueNow}`}
+                      } ${bucket.total} / 吏湲?${bucket.dueNow}`}
                       tone="quiet"
                     />
                   ))}
                   {retryableBacklogDrilldown.byChannel.map((bucket) => (
                     <StatusChip
                       key={`retryable-backlog-${bucket.key}`}
-                      label={`채널 ${bucket.key} ${bucket.total} / 대기 ${bucket.waiting}`}
+                      label={`梨꾨꼸 ${bucket.key} ${bucket.total} / ?湲?${bucket.waiting}`}
                       tone="quiet"
                     />
                   ))}
@@ -1605,7 +1623,7 @@ export function OperatorConsole({
                               <span className="font-medium text-slate-900">
                                 {systemCopy.operator.labels.claim}
                               </span>{" "}
-                              {event.claimToken ? "있음" : "없음"}
+                              {event.claimToken ? "?덉쓬" : "?놁쓬"}
                               {event.claimExpiresAt
                                 ? ` / ${formatDateTime(event.claimExpiresAt)}`
                                 : ""}
@@ -1647,3 +1665,4 @@ export function OperatorConsole({
     </div>
   );
 }
+

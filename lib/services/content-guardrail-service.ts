@@ -5,9 +5,11 @@ import type {
   ContentGuardrailResult
 } from "@/lib/domain/types";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
-
-const profanityTerms = ["시발", "씨발", "병신", "개새끼", "좆", "fuck", "bitch"];
-const highRiskTerms = ["죽고싶", "죽고 싶", "자해", "suicide", "self-harm"];
+import {
+  contentGuardrailDefaultAllowlist,
+  contentGuardrailHighRiskTerms,
+  contentGuardrailProfanityTerms
+} from "@/lib/services/content-guardrail-config";
 
 function unique(values: string[]) {
   return [...new Set(values)];
@@ -17,21 +19,36 @@ function clipExcerpt(input: string) {
   return input.trim().slice(0, 140) || null;
 }
 
-export function evaluateContentGuardrail(input: { body: string }): ContentGuardrailResult {
+function isAllowlisted(
+  reason: ContentGuardrailReason,
+  term: string,
+  allowlist?: Partial<Record<ContentGuardrailReason, string[]>>
+) {
+  const configured = allowlist?.[reason] ?? contentGuardrailDefaultAllowlist[reason] ?? [];
+  return configured.some((item) => item.trim().toLowerCase() === term.trim().toLowerCase());
+}
+
+export function evaluateContentGuardrail(input: {
+  body: string;
+  allowlist?: Partial<Record<ContentGuardrailReason, string[]>>;
+}): ContentGuardrailResult {
   const body = input.body.trim();
   const lowered = body.toLowerCase();
   const reasons: ContentGuardrailReason[] = [];
   const matchedTerms: string[] = [];
 
-  for (const term of profanityTerms) {
-    if (lowered.includes(term.toLowerCase())) {
+  for (const term of contentGuardrailProfanityTerms) {
+    if (lowered.includes(term.toLowerCase()) && !isAllowlisted("profanity", term, input.allowlist)) {
       reasons.push("profanity");
       matchedTerms.push(term);
     }
   }
 
-  for (const term of highRiskTerms) {
-    if (lowered.includes(term.toLowerCase())) {
+  for (const term of contentGuardrailHighRiskTerms) {
+    if (
+      lowered.includes(term.toLowerCase()) &&
+      !isAllowlisted("high_risk_keyword", term, input.allowlist)
+    ) {
       reasons.push("high_risk_keyword");
       matchedTerms.push(term);
     }
@@ -137,12 +154,47 @@ export async function recordContentGuardrailFlag(input: {
 }
 
 export async function listRecentContentGuardrailFlags(limit = 20) {
+  return listContentGuardrailFlags({
+    limit
+  });
+}
+
+export async function listContentGuardrailFlags(filters?: {
+  limit?: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  action?: Extract<ContentGuardrailAction, "block" | "allow_but_flag"> | null;
+  targetType?: ContentGuardrailFlag["targetType"] | null;
+  reason?: ContentGuardrailReason | null;
+}) {
   const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("content_guardrail_flags")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(Math.max(1, Math.min(filters?.limit ?? 20, 200)));
+
+  if (filters?.dateFrom) {
+    query = query.gte("created_at", filters.dateFrom);
+  }
+
+  if (filters?.dateTo) {
+    query = query.lte("created_at", filters.dateTo);
+  }
+
+  if (filters?.action) {
+    query = query.eq("action", filters.action);
+  }
+
+  if (filters?.targetType) {
+    query = query.eq("target_type", filters.targetType);
+  }
+
+  if (filters?.reason) {
+    query = query.contains("reasons", [filters.reason]);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);

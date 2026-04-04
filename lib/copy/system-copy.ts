@@ -190,9 +190,10 @@ export const systemCopy = {
     title: "운영 확인 화면",
     description: "최근 신고를 보고, 필요한 상태 변경만 빠르게 남기는 최소 운영 화면이에요.",
     authNotice:
-      "이 화면은 현재 단일 내부 시크릿으로 보호하고 있어요. 운영자 계정 분리와 세부 권한은 다음 단계에서 다룰 예정이에요.",
-    forbiddenTitle: "내부 확인용 토큰이 필요해요",
-    forbiddenDescription: "현재 운영 화면은 `?token=`으로 전달된 내부 시크릿이 맞을 때만 열 수 있어요.",
+      "이 화면은 운영자 계정으로만 접근할 수 있어요. 접근이 필요하면 운영자 권한을 요청해 주세요.",
+    forbiddenTitle: "운영자 계정이 필요해요",
+    forbiddenDescription:
+      "로그인한 계정에 운영 권한이 없어서 열 수 없어요. 운영자에게 권한을 요청해 주세요.",
     reportsTitle: "최근 신고",
     auditsTitle: "최근 상태 변경 기록",
     auditEmpty: "아직 남겨진 상태 변경 기록이 없어요.",

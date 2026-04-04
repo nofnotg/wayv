@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import { importSeedWavePosts } from "@/lib/services/seed-content-service";
 
 export async function POST(request: NextRequest) {
-  const internal = getInternalRequestContext(request);
+  const internal = await getInternalRequestContext(request);
   if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -24,3 +24,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+

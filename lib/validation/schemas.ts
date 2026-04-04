@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import {
   betaFeedbackCategoryValues,
+  contentGuardrailActionValues,
+  contentGuardrailReasonValues,
   emotionTagValues,
   moderationStatusValues,
   moderationReportReasonValues,
@@ -9,6 +11,7 @@ import {
   notificationEventStateValues,
   notificationPlatformValues,
   profileVisibilityValues,
+  productEventKeyValues,
   seedAuthorTypeValues,
   waveReactionTypeValues,
   waveCategoryValues
@@ -157,3 +160,41 @@ export const notificationDeliveryControlSchema = z.object({
 export const notificationDebugStateFilterSchema = z
   .array(z.enum(notificationEventStateValues))
   .max(10);
+
+export const reviewExportFormatSchema = z.enum(["json", "csv"]).default("json");
+
+const reviewDateSchema = z.string().trim().min(1);
+
+export const betaFeedbackReviewQuerySchema = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+  dateFrom: reviewDateSchema.nullable().optional(),
+  dateTo: reviewDateSchema.nullable().optional(),
+  category: z.enum(betaFeedbackCategoryValues).nullable().optional(),
+  pagePath: z.string().trim().min(1).nullable().optional(),
+  format: reviewExportFormatSchema
+});
+
+export const productEventReviewQuerySchema = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+  dateFrom: reviewDateSchema.nullable().optional(),
+  dateTo: reviewDateSchema.nullable().optional(),
+  eventKey: z.enum(productEventKeyValues).nullable().optional(),
+  isSeed: z.boolean().nullable().optional(),
+  format: reviewExportFormatSchema
+});
+
+export const contentGuardrailReviewQuerySchema = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+  dateFrom: reviewDateSchema.nullable().optional(),
+  dateTo: reviewDateSchema.nullable().optional(),
+  action: z.enum(["block", "allow_but_flag"]).nullable().optional(),
+  targetType: z.enum(["post", "comment"]).nullable().optional(),
+  reason: z.enum(contentGuardrailReasonValues).nullable().optional(),
+  format: reviewExportFormatSchema
+});
+
+export const operatorRoleSeedSchema = z.object({
+  userId: z.string().uuid(),
+  role: z.enum(["operator", "admin"]),
+  isActive: z.boolean().default(true)
+});

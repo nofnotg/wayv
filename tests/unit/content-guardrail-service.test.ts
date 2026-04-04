@@ -46,3 +46,17 @@ describe("content guardrail service", () => {
     });
   });
 });
+
+it("supports a bounded allowlist for tuning", () => {
+  expect(
+    evaluateContentGuardrail({
+      body: "fuck this flow",
+      allowlist: {
+        profanity: ["fuck"]
+      }
+    })
+  ).toMatchObject({
+    action: "allow",
+    reasons: []
+  });
+});

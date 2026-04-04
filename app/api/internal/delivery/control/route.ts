@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 import {
@@ -8,7 +8,7 @@ import {
 import { notificationDeliveryControlSchema } from "@/lib/validation/schemas";
 
 export async function POST(request: NextRequest) {
-  const internal = getInternalRequestContext(request);
+  const internal = await getInternalRequestContext(request);
   if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -32,3 +32,4 @@ export async function POST(request: NextRequest) {
     result
   });
 }
+

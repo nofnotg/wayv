@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import type { NotificationDeliveryScope } from "@/lib/domain/types";
 import { notificationEventStateValues } from "@/lib/domain/types";
@@ -22,7 +22,7 @@ const deliveryScopes: NotificationDeliveryScope[] = [
 ];
 
 export async function GET(request: NextRequest) {
-  const internal = getInternalRequestContext(request);
+  const internal = await getInternalRequestContext(request);
   if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -76,3 +76,4 @@ export async function GET(request: NextRequest) {
     }
   });
 }
+

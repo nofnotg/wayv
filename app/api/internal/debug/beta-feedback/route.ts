@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 import { listRecentBetaFeedback, summarizeBetaFeedback } from "@/lib/services/beta-feedback-service";
 import { getInternalRequestContext } from "@/lib/services/internal-auth-service";
 
 export async function GET(request: NextRequest) {
-  const internal = getInternalRequestContext(request);
+  const internal = await getInternalRequestContext(request);
   if (!internal.authorized) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -18,3 +18,4 @@ export async function GET(request: NextRequest) {
     summary: summarizeBetaFeedback(feedback)
   });
 }
+

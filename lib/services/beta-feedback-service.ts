@@ -64,12 +64,42 @@ export async function submitBetaFeedback(
 }
 
 export async function listRecentBetaFeedback(limit = 20) {
+  return listBetaFeedback({
+    limit
+  });
+}
+
+export async function listBetaFeedback(filters?: {
+  limit?: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  category?: BetaFeedbackCategory | null;
+  pagePath?: string | null;
+}) {
   const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("beta_feedback")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(Math.max(1, Math.min(filters?.limit ?? 20, 200)));
+
+  if (filters?.dateFrom) {
+    query = query.gte("created_at", filters.dateFrom);
+  }
+
+  if (filters?.dateTo) {
+    query = query.lte("created_at", filters.dateTo);
+  }
+
+  if (filters?.category) {
+    query = query.eq("category", filters.category);
+  }
+
+  if (filters?.pagePath) {
+    query = query.eq("page_path", filters.pagePath);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);

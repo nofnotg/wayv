@@ -1,3 +1,5 @@
+import React from "react";
+
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { OperatorConsole } from "@/features/operator/operator-console";
@@ -16,24 +18,21 @@ import {
 import { listLatestNotificationDeliveryAttemptsForEvents } from "@/lib/services/notification-delivery-attempt-log-service";
 import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
 import { listNotificationProviderValidationEntries } from "@/lib/services/notification-provider-validation-service";
-import { isInternalAccessTokenValid } from "@/lib/services/internal-auth-service";
 import {
   listModerationAuditLogs,
   listModerationReports
 } from "@/lib/services/moderation-admin-service";
 import { listNotificationDeliveryEvents } from "@/lib/services/notification-delivery-service";
+import { getOperatorAccess } from "@/lib/services/operator-access-service";
 import { listRecentProductEvents, summarizeProductEvents } from "@/lib/services/product-event-service";
 import { getSeedContentStatus } from "@/lib/services/seed-content-service";
+import { getViewerContext } from "@/lib/services/viewer-service";
 
-type OperatorPageProps = {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
+export default async function OperatorPage() {
+  const viewer = await getViewerContext();
+  const operatorAccess = viewer ? await getOperatorAccess(viewer.userId) : null;
 
-export default async function OperatorPage({ searchParams }: OperatorPageProps) {
-  const params = (await searchParams) ?? {};
-  const token = typeof params.token === "string" ? params.token : null;
-
-  if (!isInternalAccessTokenValid(token)) {
+  if (!viewer || !operatorAccess) {
     return (
       <div className="grid gap-6">
         <PageHeader
@@ -75,7 +74,6 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     .filter((event) => event.state === "retryable")
     .map((event) => event.id);
   const retryableAttempts = await listLatestNotificationDeliveryAttemptsForEvents(retryableEventIds);
-  const authorizedToken = token as string;
   const initialSenderRegistry = senderRegistry as NotificationProviderValidationEntry[];
   const initialBetaFeedback = betaFeedback as BetaFeedback[];
   const initialProductEvents = productEvents as ProductEventLog[];
@@ -101,7 +99,6 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
         initialGuardrailFlags={initialGuardrailFlags}
         initialGuardrailSummary={summarizeContentGuardrailFlags(initialGuardrailFlags)}
         initialSeedContentStatus={seedContentStatus}
-        token={authorizedToken}
       />
     </div>
   );
