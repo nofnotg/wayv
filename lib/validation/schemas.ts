@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  betaFeedbackCategoryValues,
   emotionTagValues,
   moderationStatusValues,
   moderationReportReasonValues,
@@ -8,6 +9,7 @@ import {
   notificationEventStateValues,
   notificationPlatformValues,
   profileVisibilityValues,
+  seedAuthorTypeValues,
   waveReactionTypeValues,
   waveCategoryValues
 } from "@/lib/domain/types";
@@ -81,6 +83,33 @@ export const reactionMutationSchema = z.object({
 
 export const commentSchema = z.object({
   body: z.string().trim().min(2).max(500)
+});
+
+export const feedbackSubmissionSchema = z.object({
+  category: z.enum(betaFeedbackCategoryValues),
+  message: z.string().trim().min(4).max(1000),
+  pagePath: nextPathSchema.nullable().optional(),
+  contactEmail: z
+    .string()
+    .trim()
+    .email("올바른 이메일을 입력해 주세요.")
+    .nullable()
+    .optional()
+});
+
+export const seedWavePostImportSchema = z.object({
+  entries: z.array(
+    z.object({
+      authorUserId: z.string().uuid(),
+      title: z.string().trim().max(80).nullable().optional(),
+      body: z.string().trim().min(20).max(4000),
+      categories: z.array(z.enum(waveCategoryValues)).min(1).max(3),
+      emotionTags: z.array(z.enum(emotionTagValues)).max(3).default([]),
+      visibility: z.enum(["public", "private_archive"]).default("public"),
+      seedBatch: z.string().trim().min(1).max(80),
+      seedAuthorType: z.enum(seedAuthorTypeValues)
+    })
+  )
 });
 
 export const moderationReportSchema = z.object({

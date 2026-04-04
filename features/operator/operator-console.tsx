@@ -8,6 +8,11 @@ import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
+  BetaFeedback,
+  BetaFeedbackCategory,
+  ContentGuardrailAction,
+  ContentGuardrailFlag,
+  ContentGuardrailReason,
   ModerationAuditLog,
   NotificationChannel,
   NotificationDeliveryAttemptLog,
@@ -19,7 +24,10 @@ import type {
   NotificationExecutionRunSummary,
   NotificationProviderValidationEntry,
   NotificationProviderRetryCategory,
-  ModerationReportListItem
+  ModerationReportListItem,
+  ProductEventKey,
+  ProductEventLog,
+  SeedAuthorType
 } from "@/lib/domain/types";
 import { buildNotificationDeliveryAttemptAggregatesForOutcome } from "@/lib/services/notification-delivery-attempt-aggregation-service";
 import {
@@ -39,6 +47,22 @@ type OperatorConsoleProps = {
   initialDeliveryRuns: NotificationDeliveryRunRecord[];
   initialSenderRegistry: NotificationProviderValidationEntry[];
   initialRetryableAttempts: NotificationDeliveryAttemptLog[];
+  initialBetaFeedback: BetaFeedback[];
+  initialBetaFeedbackSummary: Array<{ category: BetaFeedbackCategory; count: number }>;
+  initialProductEvents: ProductEventLog[];
+  initialProductEventSummary: Array<{ eventKey: ProductEventKey; count: number }>;
+  initialGuardrailFlags: ContentGuardrailFlag[];
+  initialGuardrailSummary: {
+    byAction: Array<{ action: Extract<ContentGuardrailAction, "block" | "allow_but_flag">; count: number }>;
+    byReason: Array<{ reason: ContentGuardrailReason; count: number }>;
+  };
+  initialSeedContentStatus: {
+    total: number;
+    publicCount: number;
+    latestSeedAt: string | null;
+    batches: string[];
+    authorTypes: SeedAuthorType[];
+  };
   token: string;
 };
 
@@ -122,6 +146,61 @@ function resolveActionableEventIds(groupEventIds: string[], selectedIds: string[
   return selectedInGroup.length ? selectedInGroup : groupEventIds;
 }
 
+function getFeedbackCategoryLabel(category: BetaFeedbackCategory) {
+  switch (category) {
+    case "bug":
+      return "버그";
+    case "confusing":
+      return "헷갈림";
+    case "suggestion":
+      return "제안";
+    case "emotional_discomfort":
+      return "정서적 불편";
+    case "exit_reason":
+      return "이탈 이유";
+  }
+}
+
+function getProductEventLabel(eventKey: ProductEventKey) {
+  switch (eventKey) {
+    case "signup_started":
+      return "가입 시작";
+    case "signup_completed":
+      return "가입 완료";
+    case "onboarding_completed":
+      return "온보딩 완료";
+    case "post_created":
+      return "글 작성";
+    case "comment_created":
+      return "댓글 작성";
+    case "reaction_added":
+      return "반응 추가";
+    case "rest_mode_started":
+      return "휴식 모드 시작";
+    case "rest_mode_ended":
+      return "휴식 모드 종료";
+    case "feedback_submitted":
+      return "피드백 제출";
+  }
+}
+
+function getGuardrailReasonLabel(reason: ContentGuardrailReason) {
+  switch (reason) {
+    case "profanity":
+      return "욕설";
+    case "contact_info":
+      return "연락처";
+    case "spam_link":
+      return "링크/홍보";
+    case "repeated_characters":
+      return "반복 문자";
+    case "repeated_tokens":
+      return "반복 단어";
+    case "high_risk_keyword":
+      return "고위험 단어";
+  }
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
@@ -133,6 +212,13 @@ export function OperatorConsole({
   initialDeliveryRuns,
   initialSenderRegistry,
   initialRetryableAttempts,
+  initialBetaFeedback,
+  initialBetaFeedbackSummary,
+  initialProductEvents,
+  initialProductEventSummary,
+  initialGuardrailFlags,
+  initialGuardrailSummary,
+  initialSeedContentStatus,
   token
 }: OperatorConsoleProps) {
   const router = useRouter();
@@ -142,6 +228,13 @@ export function OperatorConsole({
   const [deliveryRuns, setDeliveryRuns] = useState(initialDeliveryRuns);
   const [senderRegistry] = useState(initialSenderRegistry);
   const [retryableAttempts, setRetryableAttempts] = useState(initialRetryableAttempts);
+  const [betaFeedback] = useState(initialBetaFeedback);
+  const [betaFeedbackSummary] = useState(initialBetaFeedbackSummary);
+  const [productEvents] = useState(initialProductEvents);
+  const [productEventSummary] = useState(initialProductEventSummary);
+  const [guardrailFlags] = useState(initialGuardrailFlags);
+  const [guardrailSummary] = useState(initialGuardrailSummary);
+  const [seedContentStatus] = useState(initialSeedContentStatus);
   const [selectedRunDetail, setSelectedRunDetail] = useState<NotificationDeliveryRunDetail | null>(
     null
   );
@@ -540,6 +633,114 @@ export function OperatorConsole({
           {message}
         </p>
       ) : null}
+
+      <SectionCard title="베타 준비 신호">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusChip label="최근 피드백" tone="quiet" />
+              {betaFeedbackSummary.map((item) => (
+                <StatusChip
+                  key={`feedback-${item.category}`}
+                  label={`${getFeedbackCategoryLabel(item.category)} ${item.count}`}
+                  tone="quiet"
+                />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              {betaFeedback.length ? (
+                betaFeedback.slice(0, 4).map((item) => (
+                  <p key={item.id}>
+                    <span className="font-medium text-slate-900">
+                      {getFeedbackCategoryLabel(item.category)}
+                    </span>{" "}
+                    {item.message}
+                  </p>
+                ))
+              ) : (
+                <p>아직 들어온 피드백이 없습니다.</p>
+              )}
+            </div>
+          </article>
+
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusChip label="최근 제품 이벤트" tone="quiet" />
+              {productEventSummary.slice(0, 4).map((item) => (
+                <StatusChip
+                  key={`event-${item.eventKey}`}
+                  label={`${getProductEventLabel(item.eventKey)} ${item.count}`}
+                  tone="quiet"
+                />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              {productEvents.slice(0, 4).map((item) => (
+                <p key={item.id}>
+                  <span className="font-medium text-slate-900">
+                    {getProductEventLabel(item.eventKey)}
+                  </span>{" "}
+                  {formatDateTime(item.createdAt)}
+                </p>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusChip label="가드레일 플래그" tone="quiet" />
+              {guardrailSummary.byAction.map((item) => (
+                <StatusChip
+                  key={`guardrail-action-${item.action}`}
+                  label={`${item.action === "block" ? "차단" : "통과 후 확인"} ${item.count}`}
+                  tone={item.action === "block" ? "active" : "quiet"}
+                />
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-700">
+              {guardrailSummary.byReason.slice(0, 5).map((item) => (
+                <StatusChip
+                  key={`guardrail-reason-${item.reason}`}
+                  label={`${getGuardrailReasonLabel(item.reason)} ${item.count}`}
+                  tone="quiet"
+                />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              {guardrailFlags.slice(0, 3).map((item) => (
+                <p key={item.id}>
+                  <span className="font-medium text-slate-900">
+                    {item.action === "block" ? "차단" : "통과 후 확인"}
+                  </span>{" "}
+                  {item.contentExcerpt ?? "내용 일부 없음"}
+                </p>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusChip label="시드 콘텐츠" tone="quiet" />
+              <StatusChip label={`전체 ${seedContentStatus.total}`} tone="quiet" />
+              <StatusChip label={`공개 ${seedContentStatus.publicCount}`} tone="quiet" />
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              <p>
+                <span className="font-medium text-slate-900">최근 배치</span>{" "}
+                {seedContentStatus.batches[0] ?? "없음"}
+              </p>
+              <p>
+                <span className="font-medium text-slate-900">최근 입력</span>{" "}
+                {seedContentStatus.latestSeedAt ? formatDateTime(seedContentStatus.latestSeedAt) : "없음"}
+              </p>
+              <p>
+                <span className="font-medium text-slate-900">작성자 유형</span>{" "}
+                {seedContentStatus.authorTypes.length ? seedContentStatus.authorTypes.join(", ") : "없음"}
+              </p>
+            </div>
+          </article>
+        </div>
+      </SectionCard>
 
       <SectionCard title={systemCopy.operator.reportsTitle}>
         {!reports.length ? (

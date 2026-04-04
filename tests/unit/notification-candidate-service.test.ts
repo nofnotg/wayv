@@ -21,6 +21,9 @@ function createPost(overrides: Partial<WavePost>): WavePost {
     createdAt: overrides.createdAt ?? new Date().toISOString(),
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),
     archivedAt: overrides.archivedAt ?? null,
+    isSeed: overrides.isSeed ?? false,
+    seedBatch: overrides.seedBatch ?? null,
+    seedAuthorType: overrides.seedAuthorType ?? null,
     state: overrides.state ?? "spreading"
   };
 }

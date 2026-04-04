@@ -2,7 +2,17 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
-import type { NotificationProviderValidationEntry } from "@/lib/domain/types";
+import type {
+  BetaFeedback,
+  ContentGuardrailFlag,
+  NotificationProviderValidationEntry,
+  ProductEventLog
+} from "@/lib/domain/types";
+import { listRecentBetaFeedback, summarizeBetaFeedback } from "@/lib/services/beta-feedback-service";
+import {
+  listRecentContentGuardrailFlags,
+  summarizeContentGuardrailFlags
+} from "@/lib/services/content-guardrail-service";
 import { listLatestNotificationDeliveryAttemptsForEvents } from "@/lib/services/notification-delivery-attempt-log-service";
 import { listNotificationDeliveryRuns } from "@/lib/services/notification-delivery-run-history-service";
 import { listNotificationProviderValidationEntries } from "@/lib/services/notification-provider-validation-service";
@@ -12,6 +22,8 @@ import {
   listModerationReports
 } from "@/lib/services/moderation-admin-service";
 import { listNotificationDeliveryEvents } from "@/lib/services/notification-delivery-service";
+import { listRecentProductEvents, summarizeProductEvents } from "@/lib/services/product-event-service";
+import { getSeedContentStatus } from "@/lib/services/seed-content-service";
 
 type OperatorPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -35,7 +47,17 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
     );
   }
 
-  const [reports, audits, deliveryEvents, deliveryRuns, senderRegistry] = await Promise.all([
+  const [
+    reports,
+    audits,
+    deliveryEvents,
+    deliveryRuns,
+    senderRegistry,
+    betaFeedback,
+    productEvents,
+    guardrailFlags,
+    seedContentStatus
+  ] = await Promise.all([
     listModerationReports(50),
     listModerationAuditLogs(20),
     listNotificationDeliveryEvents({
@@ -43,7 +65,11 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
       states: ["pending", "operational_only", "retryable", "failed", "sent"]
     }),
     listNotificationDeliveryRuns(8),
-    Promise.resolve(listNotificationProviderValidationEntries())
+    Promise.resolve(listNotificationProviderValidationEntries()),
+    listRecentBetaFeedback(12),
+    listRecentProductEvents(16),
+    listRecentContentGuardrailFlags(12),
+    getSeedContentStatus()
   ]);
   const retryableEventIds = deliveryEvents
     .filter((event) => event.state === "retryable")
@@ -51,6 +77,9 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
   const retryableAttempts = await listLatestNotificationDeliveryAttemptsForEvents(retryableEventIds);
   const authorizedToken = token as string;
   const initialSenderRegistry = senderRegistry as NotificationProviderValidationEntry[];
+  const initialBetaFeedback = betaFeedback as BetaFeedback[];
+  const initialProductEvents = productEvents as ProductEventLog[];
+  const initialGuardrailFlags = guardrailFlags as ContentGuardrailFlag[];
 
   return (
     <div className="grid gap-6">
@@ -65,6 +94,13 @@ export default async function OperatorPage({ searchParams }: OperatorPageProps) 
         initialDeliveryRuns={deliveryRuns}
         initialSenderRegistry={initialSenderRegistry}
         initialRetryableAttempts={retryableAttempts}
+        initialBetaFeedback={initialBetaFeedback}
+        initialBetaFeedbackSummary={summarizeBetaFeedback(initialBetaFeedback)}
+        initialProductEvents={initialProductEvents}
+        initialProductEventSummary={summarizeProductEvents(initialProductEvents)}
+        initialGuardrailFlags={initialGuardrailFlags}
+        initialGuardrailSummary={summarizeContentGuardrailFlags(initialGuardrailFlags)}
+        initialSeedContentStatus={seedContentStatus}
         token={authorizedToken}
       />
     </div>

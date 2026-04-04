@@ -9,6 +9,11 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { wavePostSchema } from "@/lib/validation/schemas";
 
 import { listCommentsForPost } from "@/lib/services/comment-service";
+import {
+  evaluateContentGuardrail,
+  recordContentGuardrailFlag
+} from "@/lib/services/content-guardrail-service";
+import { recordProductEventSafe } from "@/lib/services/product-event-service";
 import { getReactionState } from "@/lib/services/reaction-service";
 import { getWavePostAccess } from "@/lib/services/wave-access-service";
 
@@ -25,6 +30,19 @@ export async function createWavePostEntry(
   const parsed = wavePostSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("invalid-post");
+  }
+
+  const guardrail = evaluateContentGuardrail({ body: parsed.data.body });
+  if (guardrail.action === "block") {
+    await recordContentGuardrailFlag({
+      targetType: "post",
+      userId,
+      action: "block",
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt
+    });
+    throw new Error("content-blocked");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -76,6 +94,31 @@ export async function createWavePostEntry(
     },
     { onConflict: "post_id" }
   );
+
+  if (guardrail.action === "allow_but_flag") {
+    await recordContentGuardrailFlag({
+      targetType: "post",
+      targetId: String(data.id),
+      userId,
+      action: "allow_but_flag",
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt
+    });
+  }
+
+  await recordProductEventSafe({
+    userId,
+    eventKey: "post_created",
+    targetType: "wave_post",
+    targetId: String(data.id),
+    metadata: {
+      visibility: parsed.data.visibility,
+      categoryCount: parsed.data.categories.length,
+      emotionTagCount: parsed.data.emotionTags.length
+    },
+    isSeed: false
+  });
 
   revalidatePath("/");
   return { ok: true as const, id: String(data.id) };

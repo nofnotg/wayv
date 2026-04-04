@@ -25,6 +25,9 @@ function mapWavePostRow(post: PostRow): WavePost {
     createdAt: String(post.created_at),
     updatedAt: String(post.updated_at),
     archivedAt: (post.archived_at as string | null) ?? null,
+    isSeed: Boolean(post.is_seed),
+    seedBatch: (post.seed_batch as string | null) ?? null,
+    seedAuthorType: (post.seed_author_type as WavePost["seedAuthorType"] | null) ?? null,
     state:
       ((post.wave_state_snapshots as { current_state: WavePost["state"] }[] | null)?.[0]
         ?.current_state as WavePost["state"] | undefined) ?? "calm"
@@ -46,6 +49,9 @@ export async function getWavePostAccess(postId: string, viewerId?: string | null
       created_at,
       updated_at,
       archived_at,
+      is_seed,
+      seed_batch,
+      seed_author_type,
       wave_post_categories ( category_key ),
       wave_post_emotions ( emotion_key ),
       wave_state_snapshots ( current_state )

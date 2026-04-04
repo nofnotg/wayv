@@ -10,6 +10,7 @@ import {
   sanitizeNextPath
 } from "@/lib/supabase/env";
 import { signInRequestSchema } from "@/lib/validation/schemas";
+import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
 export async function requestSignInLink(input: { email: string; next?: string }) {
   if (!hasSupabaseEnv()) {
@@ -36,6 +37,14 @@ export async function requestSignInLink(input: { email: string; next?: string })
     throw new Error(error.message);
   }
 
+  await recordProductEventSafe({
+    eventKey: "signup_started",
+    targetType: "auth",
+    metadata: {
+      next: sanitizeNextPath(parsed.data.next)
+    }
+  });
+
   return {
     ok: true as const,
     email: parsed.data.email,
@@ -49,6 +58,29 @@ export async function exchangeAuthCodeForSession(code: string) {
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user?.id) {
+    return;
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("id, onboarding_completed_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile?.onboarding_completed_at) {
+    await recordProductEventSafe({
+      userId: user.id,
+      eventKey: "signup_completed",
+      targetType: "auth",
+      targetId: user.id
+    });
   }
 }
 

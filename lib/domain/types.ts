@@ -78,6 +78,44 @@ export type NotificationPlatform = (typeof notificationPlatformValues)[number];
 export const wavePostVisibilityValues = ["public", "private_archive"] as const;
 export type WavePostVisibility = (typeof wavePostVisibilityValues)[number];
 
+export const betaFeedbackCategoryValues = [
+  "bug",
+  "confusing",
+  "suggestion",
+  "emotional_discomfort",
+  "exit_reason"
+] as const;
+export type BetaFeedbackCategory = (typeof betaFeedbackCategoryValues)[number];
+
+export const productEventKeyValues = [
+  "signup_started",
+  "signup_completed",
+  "onboarding_completed",
+  "post_created",
+  "comment_created",
+  "reaction_added",
+  "rest_mode_started",
+  "rest_mode_ended",
+  "feedback_submitted"
+] as const;
+export type ProductEventKey = (typeof productEventKeyValues)[number];
+
+export const contentGuardrailActionValues = ["allow", "block", "allow_but_flag"] as const;
+export type ContentGuardrailAction = (typeof contentGuardrailActionValues)[number];
+
+export const contentGuardrailReasonValues = [
+  "profanity",
+  "contact_info",
+  "spam_link",
+  "repeated_characters",
+  "repeated_tokens",
+  "high_risk_keyword"
+] as const;
+export type ContentGuardrailReason = (typeof contentGuardrailReasonValues)[number];
+
+export const seedAuthorTypeValues = ["operator", "community_manager", "system"] as const;
+export type SeedAuthorType = (typeof seedAuthorTypeValues)[number];
+
 export const notificationEventTypeValues = [
   "for_you_wave",
   "rekindled_wave",
@@ -243,6 +281,9 @@ export type WavePost = {
   updatedAt: string;
   archivedAt: string | null;
   state: WaveState;
+  isSeed: boolean;
+  seedBatch: string | null;
+  seedAuthorType: SeedAuthorType | null;
 };
 
 export type WaveReactionSummary = {
@@ -328,6 +369,46 @@ export type NotificationInboxSummary = {
   hasUnread: boolean;
   latestUnreadAt: string | null;
   unreadByLane: Partial<Record<NotificationCandidateLane, number>>;
+};
+
+export type BetaFeedback = {
+  id: string;
+  userId: string | null;
+  category: BetaFeedbackCategory;
+  message: string;
+  pagePath: string | null;
+  contactEmail: string | null;
+  createdAt: string;
+};
+
+export type ProductEventLog = {
+  id: string;
+  userId: string | null;
+  eventKey: ProductEventKey;
+  targetType: string | null;
+  targetId: string | null;
+  metadata: Record<string, unknown>;
+  isSeed: boolean;
+  createdAt: string;
+};
+
+export type ContentGuardrailResult = {
+  action: ContentGuardrailAction;
+  reasons: ContentGuardrailReason[];
+  matchedTerms: string[];
+  contentExcerpt: string | null;
+};
+
+export type ContentGuardrailFlag = {
+  id: string;
+  targetType: "post" | "comment";
+  targetId: string | null;
+  userId: string | null;
+  action: Extract<ContentGuardrailAction, "block" | "allow_but_flag">;
+  reasons: ContentGuardrailReason[];
+  matchedTerms: string[];
+  contentExcerpt: string | null;
+  createdAt: string;
 };
 
 export type NotificationLifecycleAction =

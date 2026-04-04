@@ -7,6 +7,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { reactionMutationSchema } from "@/lib/validation/schemas";
 
 import { getWavePostAccess } from "@/lib/services/wave-access-service";
+import { recordProductEventSafe } from "@/lib/services/product-event-service";
 import { refreshWaveSnapshot } from "@/lib/services/wave-state-service";
 
 export function getReactionCatalog() {
@@ -78,6 +79,17 @@ export async function addReaction(
   if (error) {
     throw new Error(error.message);
   }
+
+  await recordProductEventSafe({
+    userId,
+    eventKey: "reaction_added",
+    targetType: "wave_post",
+    targetId: postId,
+    metadata: {
+      reactionType: parsed.data.reactionType
+    },
+    isSeed: false
+  });
 
   await refreshWaveSnapshot(postId);
   revalidatePath("/");

@@ -10,6 +10,7 @@ import {
   restModeSchema,
   restModeStartSchema
 } from "@/lib/validation/schemas";
+import { recordProductEventSafe } from "@/lib/services/product-event-service";
 import { clamp } from "@/lib/utils";
 
 export async function updateProfileSettings(input: {
@@ -136,6 +137,16 @@ export async function updateRestModeSetting(input: {
       updated_at: now.toISOString()
     })
     .eq("id", userId);
+
+  await recordProductEventSafe({
+    userId,
+    eventKey: input.enabled ? "rest_mode_started" : "rest_mode_ended",
+    targetType: "user_profile",
+    targetId: userId,
+    metadata: {
+      endsAt
+    }
+  });
 
   revalidatePath("/");
   revalidatePath("/settings/rest-mode");

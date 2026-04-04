@@ -7,6 +7,7 @@ import {
 } from "@/lib/config/onboarding-questions";
 import type { OnboardingAnswer, OnboardingSeedProfile } from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
 export function getQuestionFlow(answers: OnboardingAnswer[] = []) {
   return getActiveOnboardingQuestions(answers);
@@ -74,6 +75,17 @@ export async function persistOnboardingAnswers(answers: OnboardingAnswer[], user
     },
     { onConflict: "user_id" }
   );
+
+  await recordProductEventSafe({
+    userId,
+    eventKey: "onboarding_completed",
+    targetType: "user_profile",
+    targetId: userId,
+    metadata: {
+      privacyPreference: seedProfile.privacyPreference,
+      notificationTone: seedProfile.notificationTone
+    }
+  });
 
   revalidatePath("/");
   revalidatePath("/onboarding");

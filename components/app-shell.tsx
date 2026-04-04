@@ -62,6 +62,12 @@ export function AppShell({ children, viewer, notificationSummary }: AppShellProp
                 >
                   {systemCopy.navigation.settings}
                 </Link>
+                <Link
+                  href={"/feedback" as Route}
+                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                >
+                  피드백
+                </Link>
                 <form action={signOutAction}>
                   <button
                     type="submit"
