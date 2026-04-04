@@ -66,4 +66,25 @@ describe("operator access route", () => {
     });
     expect(response.status).toBe(201);
   });
+
+  it("surfaces seed failures as a handled response", async () => {
+    getInternalRequestContext.mockResolvedValue({ authorized: true, actorLabel: "internal-token" });
+    isInternalRequestAuthorized.mockReturnValue(true);
+    upsertOperatorAccess.mockRejectedValue(new Error("operator-access-upsert-failed"));
+    const { POST } = await import("../../app/api/internal/operator/access/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/internal/operator/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "11111111-1111-1111-1111-111111111111",
+          role: "operator"
+        })
+      }) as never
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "operator-access-upsert-failed" });
+  });
 });

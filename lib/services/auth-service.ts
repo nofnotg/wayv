@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
-  getAuthCallbackUrl,
+  getAppUrl,
   hasSupabaseEnv,
   sanitizeNextPath
 } from "@/lib/supabase/env";
@@ -23,7 +23,7 @@ export async function requestSignInLink(input: { email: string; next?: string })
   }
 
   const supabase = await createServerSupabaseClient();
-  const redirectTo = new URL(getAuthCallbackUrl());
+  const redirectTo = new URL("/auth/sign-in", getAppUrl());
   redirectTo.searchParams.set("next", sanitizeNextPath(parsed.data.next));
 
   const { error } = await supabase.auth.signInWithOtp({
@@ -59,6 +59,29 @@ export async function exchangeAuthCodeForSession(code: string) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await recordSignupCompletedIfNeeded();
+}
+
+export async function exchangeTokenHashForSession(input: {
+  tokenHash: string;
+  type: string;
+}) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: input.tokenHash,
+    type: input.type as never
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await recordSignupCompletedIfNeeded();
+}
+
+async function recordSignupCompletedIfNeeded() {
+  const supabase = await createServerSupabaseClient();
 
   const {
     data: { user }

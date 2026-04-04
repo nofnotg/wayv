@@ -16,6 +16,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid-operator-access" }, { status: 400 });
   }
 
-  const access = await upsertOperatorAccess(parsed.data);
-  return NextResponse.json({ access }, { status: 201 });
+  try {
+    const access = await upsertOperatorAccess(parsed.data);
+    return NextResponse.json({ access }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "operator-access-seed-failed";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

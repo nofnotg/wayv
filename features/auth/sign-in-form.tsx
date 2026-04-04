@@ -20,7 +20,9 @@ export function SignInForm({ nextPath }: SignInFormProps) {
           placeholder="you@example.com"
         />
       </label>
-      <SubmitButton pendingLabel="링크를 보내는 중이에요...">로그인 링크 보내기</SubmitButton>
+      <SubmitButton pendingLabel="로그인 링크를 보내는 중이에요...">
+        로그인 링크 보내기
+      </SubmitButton>
     </form>
   );
 }

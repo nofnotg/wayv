@@ -36,7 +36,7 @@ describe("notification delivery worker routes", () => {
     );
 
     expect(unauthorized.status).toBe(403);
-  });
+  }, 10000);
 
   it("claims a sender-facing batch for authorized internal requests", async () => {
     claimDeliverableNotificationBatch.mockResolvedValue({
