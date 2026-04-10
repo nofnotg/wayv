@@ -1,5 +1,7 @@
+import type { Route } from "next";
 import Link from "next/link";
 
+import { BetaAccessStateCard } from "@/components/beta-access-state-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { SetupBanner } from "@/components/setup-banner";
@@ -23,6 +25,12 @@ export default async function HomePage() {
           <PageHeader title={copy.title} description={copy.description} />
           <div className="flex flex-wrap gap-3">
             <Link
+              href={"/beta/apply" as Route}
+              className="rounded-full border border-slate-300 px-5 py-3 text-sm text-slate-700"
+            >
+              베타 신청
+            </Link>
+            <Link
               href="/auth/sign-in"
               className="rounded-full bg-slate-900 px-5 py-3 text-sm text-white"
             >
@@ -33,6 +41,18 @@ export default async function HomePage() {
             <StatusChip label={systemCopy.home.statusChips.mobileReady} tone="quiet" />
           </div>
         </SectionCard>
+      </div>
+    );
+  }
+
+  if (viewer.betaAccess.status !== "approved") {
+    return (
+      <div className="grid gap-6">
+        <PageHeader
+          title={`안녕하세요, ${viewer.profile.nickname}`}
+          description="wayv는 승인된 베타 계정만 사용할 수 있어요. 승인 전까지는 이 대기 화면에서 신청 상태만 확인할 수 있어요."
+        />
+        <BetaAccessStateCard access={viewer.betaAccess} />
       </div>
     );
   }
@@ -70,7 +90,7 @@ export default async function HomePage() {
     <div className="grid gap-6">
       <PageHeader
         title={`안녕하세요, ${viewer.profile.nickname}`}
-        description="오늘의 흐름과 나에게 닿는 파도를 조용히 살펴보고 있어요."
+        description="오늘은 어떤 흐름과 파도가 머물고 있는지 조용히 둘러보고 있어요."
       />
 
       {viewer.restMode?.enabled ? (

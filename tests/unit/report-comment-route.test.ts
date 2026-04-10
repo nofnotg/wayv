@@ -17,7 +17,7 @@ describe("comment report route", () => {
   });
 
   it("surfaces structured validation failures", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     createModerationReport.mockRejectedValue(new Error("invalid-report"));
     const { POST } = await import("../../app/api/comments/[id]/report/route");
 

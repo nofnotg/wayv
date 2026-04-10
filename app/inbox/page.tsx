@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { NotificationInbox } from "@/features/notifications/notification-inbox";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
 import {
   getNotificationInboxSummary,
   listNotificationInboxEvents
@@ -11,13 +10,11 @@ import { getViewerContext } from "@/lib/services/viewer-service";
 
 export default async function InboxPage() {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    redirect("/auth/sign-in?next=/inbox");
-  }
+  const approvedViewer = await enforceApprovedViewerPageAccess({ viewer, nextPath: "/inbox" });
 
   const [events, summary] = await Promise.all([
-    listNotificationInboxEvents(viewer.userId),
-    getNotificationInboxSummary(viewer.userId)
+    listNotificationInboxEvents(approvedViewer.userId),
+    getNotificationInboxSummary(approvedViewer.userId)
   ]);
 
   return (

@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { WriteForm } from "@/features/write/write-form";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 type WritePageProps = {
@@ -12,9 +11,7 @@ type WritePageProps = {
 
 export default async function WritePage({ searchParams }: WritePageProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    redirect("/auth/sign-in?next=/write");
-  }
+  await enforceApprovedViewerPageAccess({ viewer, nextPath: "/write" });
 
   const params = (await searchParams) ?? {};
   const error = typeof params.error === "string" ? params.error : null;

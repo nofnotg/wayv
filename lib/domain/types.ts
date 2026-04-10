@@ -87,6 +87,14 @@ export const betaFeedbackCategoryValues = [
 ] as const;
 export type BetaFeedbackCategory = (typeof betaFeedbackCategoryValues)[number];
 
+export const betaAccessStatusValues = [
+  "pending",
+  "approved",
+  "rejected",
+  "revoked"
+] as const;
+export type BetaAccessStatus = (typeof betaAccessStatusValues)[number];
+
 export const productEventKeyValues = [
   "signup_started",
   "signup_completed",
@@ -208,6 +216,34 @@ export type UserProfile = {
   restModeEnabled: boolean;
   notificationOptIn: boolean;
   lastActiveAt: string | null;
+};
+
+export type BetaAccessRequest = {
+  id: string;
+  userId: string | null;
+  email: string;
+  applicantName: string | null;
+  applicationNote: string | null;
+  status: BetaAccessStatus;
+  appliedAt: string;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BetaAccessAuditLog = {
+  id: string;
+  requestId: string;
+  userId: string | null;
+  email: string;
+  actorUserId: string | null;
+  actorLabel: string;
+  previousStatus: BetaAccessStatus | null;
+  nextStatus: BetaAccessStatus;
+  note: string | null;
+  createdAt: string;
 };
 
 export type OnboardingQuestionSeedPatch = {

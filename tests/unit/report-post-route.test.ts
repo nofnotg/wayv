@@ -34,7 +34,7 @@ describe("post report route", () => {
   });
 
   it("creates a structured report for authenticated users", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     createModerationReport.mockResolvedValue({ id: "report-1" });
     const { POST } = await import("../../app/api/posts/[id]/report/route");
 

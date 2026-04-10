@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 
+import { buildApprovedViewerApiGuard } from "@/lib/services/beta-access-guard-service";
 import { getStoredSeedProfile } from "@/lib/services/onboarding-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 export async function GET() {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const guard = buildApprovedViewerApiGuard(viewer);
+  if (guard) {
+    return guard;
   }
+  const approvedViewer = viewer!;
 
-  const profile = await getStoredSeedProfile(viewer.userId);
+  const profile = await getStoredSeedProfile(approvedViewer.userId);
   return NextResponse.json({ seedProfile: profile });
 }

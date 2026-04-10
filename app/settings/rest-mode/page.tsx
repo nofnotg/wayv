@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { RestModeForm } from "@/features/settings/rest-mode-form";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 type RestModePageProps = {
@@ -12,9 +11,10 @@ type RestModePageProps = {
 
 export default async function RestModePage({ searchParams }: RestModePageProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    redirect("/auth/sign-in?next=/settings/rest-mode");
-  }
+  const approvedViewer = await enforceApprovedViewerPageAccess({
+    viewer,
+    nextPath: "/settings/rest-mode"
+  });
 
   const params = (await searchParams) ?? {};
   const status = typeof params.status === "string" ? params.status : null;
@@ -34,7 +34,7 @@ export default async function RestModePage({ searchParams }: RestModePageProps) 
             휴식 모드 설정을 다시 확인해 주세요.
           </p>
         ) : null}
-        <RestModeForm restMode={viewer.restMode} />
+        <RestModeForm restMode={approvedViewer.restMode} />
       </SectionCard>
     </div>
   );

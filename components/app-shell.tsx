@@ -14,6 +14,8 @@ type AppShellProps = {
 };
 
 export function AppShell({ children, viewer, notificationSummary }: AppShellProps) {
+  const canUseProduct = Boolean(viewer && viewer.betaAccess.status === "approved");
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(157,233,255,0.22),_transparent_40%),linear-gradient(180deg,_#f8fbff_0%,_#f7f3ea_45%,_#eef5f7_100%)] text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-6 md:px-10">
@@ -30,44 +32,48 @@ export function AppShell({ children, viewer, notificationSummary }: AppShellProp
             </Link>
             {viewer ? (
               <>
-                <Link
-                  href="/write"
-                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
-                >
-                  {systemCopy.navigation.write}
-                </Link>
-                <Link
-                  href={"/inbox" as Route}
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-slate-900/5"
-                >
-                  {systemCopy.navigation.inbox}
-                  {notificationSummary?.hasUnread ? (
-                    <span
-                      className="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-900"
-                      aria-label={`${systemCopy.notifications.inboxSummaryTitle} ${notificationSummary.unreadCount}${systemCopy.notifications.unreadSuffix}`}
+                {canUseProduct ? (
+                  <>
+                    <Link
+                      href="/write"
+                      className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
                     >
-                      {systemCopy.notifications.unreadBadge} {notificationSummary.unreadCount}
-                    </span>
-                  ) : null}
-                </Link>
-                <Link
-                  href="/profile"
-                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
-                >
-                  {systemCopy.navigation.profile}
-                </Link>
-                <Link
-                  href="/settings"
-                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
-                >
-                  {systemCopy.navigation.settings}
-                </Link>
-                <Link
-                  href={"/feedback" as Route}
-                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
-                >
-                  피드백
-                </Link>
+                      {systemCopy.navigation.write}
+                    </Link>
+                    <Link
+                      href={"/inbox" as Route}
+                      className="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                    >
+                      {systemCopy.navigation.inbox}
+                      {notificationSummary?.hasUnread ? (
+                        <span
+                          className="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-900"
+                          aria-label={`${systemCopy.notifications.inboxSummaryTitle} ${notificationSummary.unreadCount}${systemCopy.notifications.unreadSuffix}`}
+                        >
+                          {systemCopy.notifications.unreadBadge} {notificationSummary.unreadCount}
+                        </span>
+                      ) : null}
+                    </Link>
+                    <Link
+                      href="/profile"
+                      className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                    >
+                      {systemCopy.navigation.profile}
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                    >
+                      {systemCopy.navigation.settings}
+                    </Link>
+                    <Link
+                      href={"/feedback" as Route}
+                      className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                    >
+                      {"\ud53c\ub4dc\ubc31"}
+                    </Link>
+                  </>
+                ) : null}
                 <form action={signOutAction}>
                   <button
                     type="submit"
@@ -78,12 +84,20 @@ export function AppShell({ children, viewer, notificationSummary }: AppShellProp
                 </form>
               </>
             ) : (
-              <Link
-                href="/auth/sign-in"
-                className="rounded-full bg-slate-900 px-4 py-2 text-white transition hover:bg-slate-800"
-              >
-                {systemCopy.navigation.signIn}
-              </Link>
+              <>
+                <Link
+                  href={"/beta/apply" as Route}
+                  className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                >
+                  {"\ubca0\ud0c0 \uc2e0\uccad"}
+                </Link>
+                <Link
+                  href="/auth/sign-in"
+                  className="rounded-full bg-slate-900 px-4 py-2 text-white transition hover:bg-slate-800"
+                >
+                  {systemCopy.navigation.signIn}
+                </Link>
+              </>
             )}
           </nav>
         </header>

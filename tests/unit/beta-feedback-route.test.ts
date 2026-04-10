@@ -16,9 +16,8 @@ describe("feedback route", () => {
     vi.clearAllMocks();
   });
 
-  it("submits feedback for anonymous viewers too", async () => {
+  it("requires auth to submit feedback", async () => {
     getViewerContext.mockResolvedValue(null);
-    submitBetaFeedback.mockResolvedValue({ id: "feedback-1" });
 
     const { POST } = await import("../../app/api/feedback/route");
     const response = await POST(
@@ -27,23 +26,39 @@ describe("feedback route", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           category: "suggestion",
-          message: "헷갈리는 버튼이 있어요."
+          message: "화면이 조금 헷갈렸어요."
         })
       }) as never
     );
 
-    expect(submitBetaFeedback).toHaveBeenCalledWith(
-      {
-        category: "suggestion",
-        message: "헷갈리는 버튼이 있어요."
-      },
-      null
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "unauthorized" });
+  });
+
+  it("blocks pending viewers from feedback submission", async () => {
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "pending" } });
+
+    const { POST } = await import("../../app/api/feedback/route");
+    const response = await POST(
+      new Request("http://localhost/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "suggestion",
+          message: "대기 상태에서는 피드백도 막혀 있는지 확인하고 싶어요."
+        })
+      }) as never
     );
-    expect(response.status).toBe(201);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "beta-access-denied",
+      status: "pending"
+    });
   });
 
   it("returns 400 when the feedback service rejects input", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     submitBetaFeedback.mockRejectedValue(new Error("invalid-feedback"));
 
     const { POST } = await import("../../app/api/feedback/route");

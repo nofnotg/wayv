@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { ProfileForm } from "@/features/profile/profile-form";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 type ProfilePageProps = {
@@ -12,9 +11,7 @@ type ProfilePageProps = {
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    redirect("/auth/sign-in?next=/profile");
-  }
+  const approvedViewer = await enforceApprovedViewerPageAccess({ viewer, nextPath: "/profile" });
 
   const params = (await searchParams) ?? {};
   const status = typeof params.status === "string" ? params.status : null;
@@ -34,7 +31,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             {systemCopy.profile.error}
           </p>
         ) : null}
-        <ProfileForm profile={viewer.profile} />
+        <ProfileForm profile={approvedViewer.profile} />
       </SectionCard>
     </div>
   );

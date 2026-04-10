@@ -11,6 +11,8 @@ const listNotificationDeliveryEvents = vi.fn();
 const listNotificationDeliveryRuns = vi.fn();
 const listNotificationProviderValidationEntries = vi.fn();
 const listLatestNotificationDeliveryAttemptsForEvents = vi.fn();
+const listBetaAccessRequests = vi.fn();
+const listRecentBetaAccessAuditLogs = vi.fn();
 const listRecentBetaFeedback = vi.fn();
 const summarizeBetaFeedback = vi.fn();
 const listRecentProductEvents = vi.fn();
@@ -64,6 +66,10 @@ vi.mock("@/components/status-chip", () => ({
   StatusChip: ({ label }: { label: string }) => <span>{label}</span>
 }));
 
+vi.mock("@/features/operator/beta-access-panel", () => ({
+  BetaAccessPanel: () => <div>beta-access-panel</div>
+}));
+
 vi.mock("@/features/operator/operator-console", () => ({
   OperatorConsole: () => <div>operator-console</div>
 }));
@@ -91,6 +97,11 @@ vi.mock("@/lib/services/notification-delivery-run-history-service", () => ({
 
 vi.mock("@/lib/services/notification-provider-validation-service", () => ({
   listNotificationProviderValidationEntries
+}));
+
+vi.mock("@/lib/services/beta-access-service", () => ({
+  listBetaAccessRequests,
+  listRecentBetaAccessAuditLogs
 }));
 
 vi.mock("@/lib/services/notification-delivery-attempt-log-service", () => ({
@@ -146,7 +157,7 @@ describe("operator page", () => {
     expect(html).not.toContain("operator-console");
   });
 
-  it("renders operator console for authorized operators", async () => {
+  it("renders operator panels for authorized operators", async () => {
     getViewerContext.mockResolvedValue({ userId: "viewer-1" });
     getOperatorAccess.mockResolvedValue({ userId: "viewer-1", role: "operator" });
     listModerationReports.mockResolvedValue([]);
@@ -155,6 +166,8 @@ describe("operator page", () => {
     listNotificationDeliveryRuns.mockResolvedValue([]);
     listNotificationProviderValidationEntries.mockReturnValue([]);
     listLatestNotificationDeliveryAttemptsForEvents.mockResolvedValue([]);
+    listBetaAccessRequests.mockResolvedValue([]);
+    listRecentBetaAccessAuditLogs.mockResolvedValue([]);
     listRecentBetaFeedback.mockResolvedValue([]);
     summarizeBetaFeedback.mockReturnValue([]);
     listRecentProductEvents.mockResolvedValue([]);
@@ -176,7 +189,7 @@ describe("operator page", () => {
       },
       envReadiness: {
         status: "ready",
-        summary: "배포 환경값이 준비돼 있어요.",
+        summary: "배포 환경값이 준비되어 있어요.",
         checks: {},
         appOrigin: "https://wayv.app",
         authRedirectOrigin: "https://wayv.app"
@@ -188,12 +201,12 @@ describe("operator page", () => {
       },
       operatorBootstrapReadiness: {
         status: "ready",
-        summary: "운영자 seed가 확인돼요.",
+        summary: "운영자 seed가 확인됐어요.",
         checks: {}
       },
       reviewExportReadiness: {
         status: "ready",
-        summary: "검토/export 경로가 준비돼 있어요.",
+        summary: "검토 export 경로가 준비되어 있어요.",
         checks: {}
       },
       overallStatus: "ready_with_caution",
@@ -203,6 +216,7 @@ describe("operator page", () => {
     const { default: OperatorPage } = await import("../../app/internal/operator/page");
     const html = renderToStaticMarkup(await OperatorPage());
 
+    expect(html).toContain("beta-access-panel");
     expect(html).toContain("operator-console");
     expect(html).toContain("배포 베타 점검");
     expect(html).toContain("배포 환경");

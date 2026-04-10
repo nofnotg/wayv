@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { buildApprovedViewerApiGuard } from "@/lib/services/beta-access-guard-service";
 import { submitBetaFeedback } from "@/lib/services/beta-feedback-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
@@ -11,6 +12,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const viewer = await getViewerContext();
+    const guard = buildApprovedViewerApiGuard(viewer);
+    if (guard) {
+      return guard;
+    }
+    const approvedViewer = viewer!;
     const feedback = await submitBetaFeedback(
       payload as {
         category: "bug" | "confusing" | "suggestion" | "emotional_discomfort" | "exit_reason";
@@ -18,7 +24,7 @@ export async function POST(request: NextRequest) {
         pagePath?: string | null;
         contactEmail?: string | null;
       },
-      viewer?.userId ?? null
+      approvedViewer.userId
     );
 
     return NextResponse.json({ feedback }, { status: 201 });

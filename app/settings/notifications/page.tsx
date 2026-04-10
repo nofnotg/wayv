@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { NotificationSettingsForm } from "@/features/settings/notification-settings-form";
+import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 type NotificationSettingsPageProps = {
@@ -13,9 +12,10 @@ export default async function NotificationSettingsPage({
   searchParams
 }: NotificationSettingsPageProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    redirect("/auth/sign-in?next=/settings/notifications");
-  }
+  const approvedViewer = await enforceApprovedViewerPageAccess({
+    viewer,
+    nextPath: "/settings/notifications"
+  });
 
   const params = (await searchParams) ?? {};
   const status = typeof params.status === "string" ? params.status : null;
@@ -38,7 +38,7 @@ export default async function NotificationSettingsPage({
             알림 설정을 다시 확인해 주세요.
           </p>
         ) : null}
-        <NotificationSettingsForm preferences={viewer.notificationPreferences} />
+        <NotificationSettingsForm preferences={approvedViewer.notificationPreferences} />
       </SectionCard>
     </div>
   );

@@ -4,9 +4,12 @@ import { headers } from "next/headers";
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
+import { BetaAccessPanel } from "@/features/operator/beta-access-panel";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
+  BetaAccessAuditLog,
+  BetaAccessRequest,
   BetaFeedback,
   ContentGuardrailFlag,
   NotificationProviderValidationEntry,
@@ -16,6 +19,10 @@ import {
   getBetaDeploymentSelfCheck,
   type BetaDeploymentSelfCheck
 } from "@/lib/services/beta-deployment-self-check-service";
+import {
+  listBetaAccessRequests,
+  listRecentBetaAccessAuditLogs
+} from "@/lib/services/beta-access-service";
 import { listRecentBetaFeedback, summarizeBetaFeedback } from "@/lib/services/beta-feedback-service";
 import {
   listRecentContentGuardrailFlags,
@@ -77,10 +84,7 @@ export default async function OperatorPage() {
   }
 
   const requestHeaders = await headers();
-  const requestHost =
-    requestHeaders.get("x-forwarded-host") ??
-    requestHeaders.get("host") ??
-    null;
+  const requestHost = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? null;
   const requestProtocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const requestUrl = requestHost ? `${requestProtocol}://${requestHost}/internal/operator` : null;
 
@@ -90,6 +94,8 @@ export default async function OperatorPage() {
     deliveryEvents,
     deliveryRuns,
     senderRegistry,
+    betaAccessRequests,
+    betaAccessAudits,
     betaFeedback,
     productEvents,
     guardrailFlags,
@@ -104,6 +110,8 @@ export default async function OperatorPage() {
     }),
     listNotificationDeliveryRuns(8),
     Promise.resolve(listNotificationProviderValidationEntries()),
+    listBetaAccessRequests({ limit: 12 }),
+    listRecentBetaAccessAuditLogs(12),
     listRecentBetaFeedback(12),
     listRecentProductEvents(16),
     listRecentContentGuardrailFlags(12),
@@ -113,24 +121,20 @@ export default async function OperatorPage() {
       viewerUserId: viewer.userId
     })
   ]);
+
   const retryableEventIds = deliveryEvents
     .filter((event) => event.state === "retryable")
     .map((event) => event.id);
   const retryableAttempts = await listLatestNotificationDeliveryAttemptsForEvents(retryableEventIds);
-  const initialSenderRegistry = senderRegistry as NotificationProviderValidationEntry[];
-  const initialBetaFeedback = betaFeedback as BetaFeedback[];
-  const initialProductEvents = productEvents as ProductEventLog[];
-  const initialGuardrailFlags = guardrailFlags as ContentGuardrailFlag[];
 
   return (
     <div className="grid gap-6">
-      <PageHeader
-        title={systemCopy.operator.title}
-        description={systemCopy.operator.description}
-      />
+      <PageHeader title={systemCopy.operator.title} description={systemCopy.operator.description} />
+
       <SectionCard title="배포 베타 점검">
         <p className="text-sm leading-7 text-slate-600">
-          배포 뒤에 바로 운영 준비 상태를 확인할 수 있도록 핵심 점검만 모아 두었어요.
+          배포 후에도 운영 화면 안에서 바로 베타 준비 상태를 확인할 수 있게 핵심 점검만 묶어
+          두었어요.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {[
@@ -186,19 +190,27 @@ export default async function OperatorPage() {
           </ul>
         ) : null}
       </SectionCard>
+
+      <BetaAccessPanel
+        initialRequests={betaAccessRequests as BetaAccessRequest[]}
+        initialAudits={betaAccessAudits as BetaAccessAuditLog[]}
+      />
+
       <OperatorConsole
         initialReports={reports}
         initialAudits={audits}
         initialDeliveryEvents={deliveryEvents}
         initialDeliveryRuns={deliveryRuns}
-        initialSenderRegistry={initialSenderRegistry}
+        initialSenderRegistry={senderRegistry as NotificationProviderValidationEntry[]}
         initialRetryableAttempts={retryableAttempts}
-        initialBetaFeedback={initialBetaFeedback}
-        initialBetaFeedbackSummary={summarizeBetaFeedback(initialBetaFeedback)}
-        initialProductEvents={initialProductEvents}
-        initialProductEventSummary={summarizeProductEvents(initialProductEvents)}
-        initialGuardrailFlags={initialGuardrailFlags}
-        initialGuardrailSummary={summarizeContentGuardrailFlags(initialGuardrailFlags)}
+        initialBetaFeedback={betaFeedback as BetaFeedback[]}
+        initialBetaFeedbackSummary={summarizeBetaFeedback(betaFeedback as BetaFeedback[])}
+        initialProductEvents={productEvents as ProductEventLog[]}
+        initialProductEventSummary={summarizeProductEvents(productEvents as ProductEventLog[])}
+        initialGuardrailFlags={guardrailFlags as ContentGuardrailFlag[]}
+        initialGuardrailSummary={summarizeContentGuardrailFlags(
+          guardrailFlags as ContentGuardrailFlag[]
+        )}
         initialSeedContentStatus={seedContentStatus}
       />
     </div>

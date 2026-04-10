@@ -32,7 +32,7 @@ describe("notification routes", () => {
   });
 
   it("lists recent inbox events and summary for signed-in users", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     listNotificationInboxEvents.mockResolvedValue([{ id: "event-1" }]);
     getNotificationInboxSummary.mockResolvedValue({
       unreadCount: 2,
@@ -55,7 +55,7 @@ describe("notification routes", () => {
   });
 
   it("returns summary from the dedicated summary route", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     getNotificationInboxSummary.mockResolvedValue({
       unreadCount: 1,
       hasUnread: true,
@@ -75,7 +75,7 @@ describe("notification routes", () => {
   });
 
   it("marks an event as read for the signed-in user", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     markNotificationEventRead.mockResolvedValue({ id: "event-1", state: "read" });
     getNotificationInboxSummary.mockResolvedValue({
       unreadCount: 0,
@@ -97,7 +97,7 @@ describe("notification routes", () => {
   });
 
   it("dismisses an event for the signed-in user", async () => {
-    getViewerContext.mockResolvedValue({ userId: "viewer-1" });
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     dismissNotificationEvent.mockResolvedValue({ id: "event-1", state: "dismissed" });
     getNotificationInboxSummary.mockResolvedValue({
       unreadCount: 0,
@@ -116,5 +116,18 @@ describe("notification routes", () => {
     expect(dismissNotificationEvent).toHaveBeenCalledWith("event-1", "viewer-1");
     expect(getNotificationInboxSummary).toHaveBeenCalledWith("viewer-1");
     expect(response.status).toBe(200);
+  });
+
+  it("returns 403 for pending viewers on inbox routes", async () => {
+    getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "pending" } });
+    const { GET } = await import("../../app/api/notifications/route");
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "beta-access-denied",
+      status: "pending"
+    });
   });
 });

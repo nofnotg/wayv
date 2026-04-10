@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { buildApprovedViewerApiGuard } from "@/lib/services/beta-access-guard-service";
 import {
   getNotificationInboxSummary,
   listNotificationInboxEvents
@@ -8,13 +9,15 @@ import { getViewerContext } from "@/lib/services/viewer-service";
 
 export async function GET() {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const guard = buildApprovedViewerApiGuard(viewer);
+  if (guard) {
+    return guard;
   }
+  const approvedViewer = viewer!;
 
   const [events, summary] = await Promise.all([
-    listNotificationInboxEvents(viewer.userId),
-    getNotificationInboxSummary(viewer.userId)
+    listNotificationInboxEvents(approvedViewer.userId),
+    getNotificationInboxSummary(approvedViewer.userId)
   ]);
   return NextResponse.json({ events, summary });
 }

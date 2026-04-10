@@ -14,6 +14,7 @@ export async function GET() {
       id: viewer.userId,
       email: viewer.email
     },
+    betaAccess: viewer.betaAccess,
     profile: viewer.profile,
     notificationPreferences: viewer.notificationPreferences,
     restMode: viewer.restMode

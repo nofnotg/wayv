@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { buildApprovedViewerApiGuard } from "@/lib/services/beta-access-guard-service";
 import {
   dismissNotificationEvent,
   getNotificationInboxSummary
@@ -12,15 +13,17 @@ type RouteProps = {
 
 export async function POST(_: NextRequest, { params }: RouteProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const guard = buildApprovedViewerApiGuard(viewer);
+  if (guard) {
+    return guard;
   }
+  const approvedViewer = viewer!;
 
   const { id } = await params;
 
   try {
-    const event = await dismissNotificationEvent(id, viewer.userId);
-    const summary = await getNotificationInboxSummary(viewer.userId);
+    const event = await dismissNotificationEvent(id, approvedViewer.userId);
+    const summary = await getNotificationInboxSummary(approvedViewer.userId);
     return NextResponse.json({ event, summary });
   } catch (error) {
     return NextResponse.json(

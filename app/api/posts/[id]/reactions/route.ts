@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { buildApprovedViewerApiGuard } from "@/lib/services/beta-access-guard-service";
 import {
   addReaction,
   getReactionCatalog,
@@ -15,7 +16,12 @@ type ReactionRouteProps = {
 export async function GET(_: Request, { params }: ReactionRouteProps) {
   const { id } = await params;
   const viewer = await getViewerContext();
-  const state = await getReactionState(id, viewer?.userId);
+  const guard = buildApprovedViewerApiGuard(viewer);
+  if (guard) {
+    return guard;
+  }
+  const approvedViewer = viewer!;
+  const state = await getReactionState(id, approvedViewer.userId);
 
   return NextResponse.json({
     summary: state.summary,
@@ -26,15 +32,17 @@ export async function GET(_: Request, { params }: ReactionRouteProps) {
 
 export async function POST(request: NextRequest, { params }: ReactionRouteProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const guard = buildApprovedViewerApiGuard(viewer);
+  if (guard) {
+    return guard;
   }
+  const approvedViewer = viewer!;
 
   const { id } = await params;
   const body = await request.json();
 
   try {
-    const state = await addReaction(body, id, viewer.userId);
+    const state = await addReaction(body, id, approvedViewer.userId);
     return NextResponse.json(state);
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid-reaction";
@@ -44,15 +52,17 @@ export async function POST(request: NextRequest, { params }: ReactionRouteProps)
 
 export async function DELETE(request: NextRequest, { params }: ReactionRouteProps) {
   const viewer = await getViewerContext();
-  if (!viewer) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const guard = buildApprovedViewerApiGuard(viewer);
+  if (guard) {
+    return guard;
   }
+  const approvedViewer = viewer!;
 
   const { id } = await params;
   const body = await request.json();
 
   try {
-    const state = await removeReaction(body, id, viewer.userId);
+    const state = await removeReaction(body, id, approvedViewer.userId);
     return NextResponse.json(state);
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid-reaction";

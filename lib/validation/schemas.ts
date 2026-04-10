@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  betaAccessStatusValues,
   betaFeedbackCategoryValues,
   contentGuardrailActionValues,
   contentGuardrailReasonValues,
@@ -31,6 +32,12 @@ export const emailSchema = z.object({
 
 export const signInRequestSchema = emailSchema.extend({
   next: nextPathSchema.optional()
+});
+
+export const betaApplicationSchema = z.object({
+  email: z.string().trim().email("올바른 이메일을 입력해 주세요."),
+  applicantName: z.string().trim().min(1).max(40).nullable().optional(),
+  applicationNote: z.string().trim().min(8).max(600)
 });
 
 export const profileSchema = z.object({
@@ -197,4 +204,14 @@ export const operatorRoleSeedSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(["operator", "admin"]),
   isActive: z.boolean().default(true)
+});
+
+export const betaAccessDecisionSchema = z.object({
+  status: z.enum(["approved", "rejected", "revoked"]),
+  note: z.string().trim().max(280).nullable().optional()
+});
+
+export const betaAccessListQuerySchema = z.object({
+  status: z.enum(betaAccessStatusValues).nullable().optional(),
+  limit: z.number().int().min(1).max(100).default(20)
 });
