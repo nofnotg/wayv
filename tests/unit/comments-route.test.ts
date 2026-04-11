@@ -54,6 +54,25 @@ describe("post comments route", () => {
     });
   });
 
+  it("returns 403 with applicationRequired for signed-in viewers without a beta application", async () => {
+    getViewerContext.mockResolvedValue({
+      userId: "viewer-1",
+      betaAccess: null
+    });
+    const { GET } = await import("../../app/api/posts/[id]/comments/route");
+
+    const response = await GET(new Request("http://localhost") as never, {
+      params: Promise.resolve({ id: "post-1" })
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "beta-access-denied",
+      status: null,
+      applicationRequired: true
+    });
+  });
+
   it("surfaces validation failures from the comment service", async () => {
     getViewerContext.mockResolvedValue({ userId: "viewer-1", betaAccess: { status: "approved" } });
     createComment.mockRejectedValue(new Error("invalid-comment"));
