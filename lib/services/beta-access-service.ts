@@ -128,7 +128,7 @@ async function updateRequestRecord(
   return mapBetaAccessRow(data as Record<string, unknown>);
 }
 
-export async function getOrCreateViewerBetaAccess(input: {
+export async function getViewerBetaAccess(input: {
   userId: string;
   email: string;
 }) {
@@ -151,33 +151,7 @@ export async function getOrCreateViewerBetaAccess(input: {
     return updateRequestRecord(existingByEmail.id, { user_id: input.userId });
   }
 
-  const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase
-    .from("beta_access_requests")
-    .insert({
-      user_id: input.userId,
-      email: normalizedEmail,
-      status: "pending"
-    })
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    throw new Error(error?.message ?? "beta-access-create-failed");
-  }
-
-  const request = mapBetaAccessRow(data as Record<string, unknown>);
-  await insertBetaAccessAuditLog({
-    requestId: request.id,
-    userId: request.userId,
-    email: request.email,
-    actorUserId: input.userId,
-    actorLabel: "beta-auth",
-    previousStatus: null,
-    nextStatus: "pending"
-  });
-
-  return request;
+  return null;
 }
 
 export async function submitBetaApplication(input: {

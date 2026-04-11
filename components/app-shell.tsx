@@ -14,7 +14,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ children, viewer, notificationSummary }: AppShellProps) {
-  const canUseProduct = Boolean(viewer && viewer.betaAccess.status === "approved");
+  const canUseProduct = Boolean(viewer && viewer.betaAccess?.status === "approved");
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(157,233,255,0.22),_transparent_40%),linear-gradient(180deg,_#f8fbff_0%,_#f7f3ea_45%,_#eef5f7_100%)] text-slate-900">

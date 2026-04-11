@@ -6,7 +6,7 @@ import type {
   RestModeSetting,
   UserProfile
 } from "@/lib/domain/types";
-import { getOrCreateViewerBetaAccess } from "@/lib/services/beta-access-service";
+import { getViewerBetaAccess } from "@/lib/services/beta-access-service";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { deriveNickname } from "@/lib/utils";
@@ -15,7 +15,7 @@ export type ViewerContext = {
   userId: string;
   email: string;
   profile: UserProfile;
-  betaAccess: BetaAccessRequest;
+  betaAccess: BetaAccessRequest | null;
   notificationPreferences: NotificationPreference | null;
   restMode: RestModeSetting | null;
 };
@@ -85,7 +85,7 @@ export const getViewerContext = cache(async (): Promise<ViewerContext | null> =>
       supabase.from("rest_mode_settings").select("*").eq("user_id", user.id).single()
     ]);
 
-  const betaAccess = await getOrCreateViewerBetaAccess({
+  const betaAccess = await getViewerBetaAccess({
     userId: user.id,
     email: user.email
   });

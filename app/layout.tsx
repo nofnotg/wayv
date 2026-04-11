@@ -29,7 +29,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const viewer = await getViewerContext();
-  const notificationSummary = viewer?.betaAccess.status === "approved"
+  const notificationSummary = viewer?.betaAccess?.status === "approved"
     ? await getNotificationInboxSummary(viewer.userId)
     : null;
 

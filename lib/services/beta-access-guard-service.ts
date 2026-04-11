@@ -4,13 +4,14 @@ import { NextResponse } from "next/server";
 import type { ViewerContext } from "@/lib/services/viewer-service";
 
 export function isApprovedViewer(viewer: ViewerContext | null | undefined) {
-  return viewer?.betaAccess.status === "approved";
+  return viewer?.betaAccess?.status === "approved";
 }
 
 export function getBetaAccessDeniedPayload(viewer: ViewerContext) {
   return {
     error: "beta-access-denied",
-    status: viewer.betaAccess.status
+    status: viewer.betaAccess?.status ?? null,
+    applicationRequired: !viewer.betaAccess
   };
 }
 

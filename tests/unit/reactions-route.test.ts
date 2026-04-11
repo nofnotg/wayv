@@ -53,7 +53,8 @@ describe("post reactions route", () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
       error: "beta-access-denied",
-      status: "pending"
+      status: "pending",
+      applicationRequired: false
     });
   });
 
