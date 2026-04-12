@@ -4,10 +4,12 @@ import {
   betaAccessStatusValues,
   betaFeedbackCategoryValues,
   contentGuardrailActionValues,
+  contentGuardrailGuidanceFamilyValues,
   contentGuardrailReasonValues,
   contentGuardrailTargetTypeValues,
   emotionTagValues,
   moderationStatusValues,
+  moderationFeedbackChoiceValues,
   moderationReportReasonValues,
   notificationDigestModeValues,
   notificationEventStateValues,
@@ -201,6 +203,34 @@ export const contentGuardrailReviewQuerySchema = z.object({
     .optional(),
   targetType: z.enum(contentGuardrailTargetTypeValues).nullable().optional(),
   reason: z.enum(contentGuardrailReasonValues).nullable().optional(),
+  format: reviewExportFormatSchema
+});
+
+export const moderationFeedbackSubmissionSchema = z.object({
+  targetType: z.enum(contentGuardrailTargetTypeValues),
+  targetId: z.string().uuid().nullable().optional(),
+  action: z.enum(["allow_with_guidance", "soft_hold", "safety_hold", "hard_block"]),
+  reasons: z.array(z.enum(contentGuardrailReasonValues)).min(1).max(10),
+  guidanceFamily: z.enum(contentGuardrailGuidanceFamilyValues).nullable().optional(),
+  choice: z.enum(moderationFeedbackChoiceValues),
+  freeText: z.string().trim().max(280).nullable().optional(),
+  path: nextPathSchema.nullable().optional(),
+  retryAttempted: z.boolean().default(false),
+  retrySucceeded: z.boolean().nullable().optional()
+});
+
+export const moderationFeedbackReviewQuerySchema = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+  dateFrom: reviewDateSchema.nullable().optional(),
+  dateTo: reviewDateSchema.nullable().optional(),
+  action: z
+    .enum(["allow_with_guidance", "soft_hold", "safety_hold", "hard_block"])
+    .nullable()
+    .optional(),
+  targetType: z.enum(contentGuardrailTargetTypeValues).nullable().optional(),
+  reason: z.enum(contentGuardrailReasonValues).nullable().optional(),
+  userId: z.string().uuid().nullable().optional(),
+  hasFreeText: z.boolean().nullable().optional(),
   format: reviewExportFormatSchema
 });
 

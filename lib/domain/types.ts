@@ -154,6 +154,16 @@ export const contentGuardrailGuidanceFamilyValues = [
 export type ContentGuardrailGuidanceFamily =
   (typeof contentGuardrailGuidanceFamilyValues)[number];
 
+export const moderationFeedbackChoiceValues = [
+  "understood",
+  "felt_too_strict",
+  "still_confusing",
+  "tone_felt_okay",
+  "tone_felt_cold",
+  "felt_necessary"
+] as const;
+export type ModerationFeedbackChoice = (typeof moderationFeedbackChoiceValues)[number];
+
 export const seedAuthorTypeValues = ["operator", "community_manager", "system"] as const;
 export type SeedAuthorType = (typeof seedAuthorTypeValues)[number];
 
@@ -492,6 +502,23 @@ export type ContentGuardrailFlag = {
   severity: ContentGuardrailSeverity;
   suggestedAction: Exclude<ContentGuardrailAction, "allow">;
   guidanceFamily: ContentGuardrailGuidanceFamily | null;
+  createdAt: string;
+};
+
+export type ModerationFeedback = {
+  id: string;
+  userId: string | null;
+  targetType: ContentGuardrailTargetType;
+  targetId: string | null;
+  action: Exclude<ContentGuardrailAction, "allow">;
+  reasons: ContentGuardrailReason[];
+  guidanceFamily: ContentGuardrailGuidanceFamily | null;
+  choice: ModerationFeedbackChoice;
+  freeText: string | null;
+  path: string | null;
+  retryAttempted: boolean;
+  retrySucceeded: boolean | null;
+  userLabel: string | null;
   createdAt: string;
 };
 

@@ -15,6 +15,7 @@ const listBetaAccessRequests = vi.fn();
 const listRecentBetaAccessAuditLogs = vi.fn();
 const listRecentBetaFeedback = vi.fn();
 const summarizeBetaFeedback = vi.fn();
+const listRecentModerationFeedback = vi.fn();
 const listRecentProductEvents = vi.fn();
 const summarizeProductEvents = vi.fn();
 const listRecentContentGuardrailFlags = vi.fn();
@@ -74,6 +75,10 @@ vi.mock("@/features/operator/operator-console", () => ({
   OperatorConsole: () => <div>operator-console</div>
 }));
 
+vi.mock("@/features/operator/moderation-feedback-panel", () => ({
+  ModerationFeedbackPanel: () => <div>moderation-feedback-panel</div>
+}));
+
 vi.mock("@/lib/services/viewer-service", () => ({
   getViewerContext
 }));
@@ -111,6 +116,10 @@ vi.mock("@/lib/services/notification-delivery-attempt-log-service", () => ({
 vi.mock("@/lib/services/beta-feedback-service", () => ({
   listRecentBetaFeedback,
   summarizeBetaFeedback
+}));
+
+vi.mock("@/lib/services/moderation-feedback-service", () => ({
+  listRecentModerationFeedback
 }));
 
 vi.mock("@/lib/services/product-event-service", () => ({
@@ -170,6 +179,7 @@ describe("operator page", () => {
     listRecentBetaAccessAuditLogs.mockResolvedValue([]);
     listRecentBetaFeedback.mockResolvedValue([]);
     summarizeBetaFeedback.mockReturnValue([]);
+    listRecentModerationFeedback.mockResolvedValue([]);
     listRecentProductEvents.mockResolvedValue([]);
     summarizeProductEvents.mockReturnValue([]);
     listRecentContentGuardrailFlags.mockResolvedValue([]);
@@ -217,6 +227,7 @@ describe("operator page", () => {
     const html = renderToStaticMarkup(await OperatorPage());
 
     expect(html).toContain("beta-access-panel");
+    expect(html).toContain("moderation-feedback-panel");
     expect(html).toContain("operator-console");
     expect(html).toContain("배포 베타 점검");
     expect(html).toContain("배포 환경");

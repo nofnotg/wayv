@@ -7,12 +7,23 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDateTime(value: string | null): string {
   if (!value) {
-    return "아직 기록이 없어요.";
+    return "아직 기록이 없어요";
   }
 
   return new Intl.DateTimeFormat("ko-KR", {
     dateStyle: "medium",
     timeStyle: "short"
+  }).format(new Date(value));
+}
+
+export function formatDateTimeWithSeconds(value: string | null): string {
+  if (!value) {
+    return "아직 기록이 없어요";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "medium"
   }).format(new Date(value));
 }
 

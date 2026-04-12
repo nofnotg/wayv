@@ -18,6 +18,37 @@ import { recordProductEventSafe } from "@/lib/services/product-event-service";
 import { getReactionState } from "@/lib/services/reaction-service";
 import { getWavePostAccess } from "@/lib/services/wave-access-service";
 
+function buildModerationQuery(input: {
+  action: "allow_with_guidance" | "soft_hold" | "safety_hold" | "hard_block";
+  targetType: "post_title" | "post_body";
+  reasons: string[];
+  guidanceFamily?: string | null;
+}) {
+  const params = new URLSearchParams();
+
+  if (input.action === "allow_with_guidance") {
+    params.set("guidance", "wave-flow");
+  } else {
+    params.set("held", input.action);
+  }
+
+  params.set("targetType", input.targetType);
+
+  if (input.reasons.length) {
+    params.set("reasons", input.reasons.join(","));
+  }
+
+  if (input.guidanceFamily) {
+    params.set("guidanceFamily", input.guidanceFamily);
+  }
+
+  return params.toString();
+}
+
+function normalizePostTargetType(targetType: string): "post_title" | "post_body" {
+  return targetType === "post_title" ? "post_title" : "post_body";
+}
+
 export async function createWavePostEntry(
   input: {
     title?: string | null;
@@ -181,11 +212,25 @@ export async function createWavePostAction(formData: FormData) {
     );
 
     if (result.moderation?.action === "allow_with_guidance") {
-      redirect(`/wave/${result.id}?guidance=wave-keeper`);
+      redirect(
+        `/wave/${result.id}?${buildModerationQuery({
+          action: result.moderation.action,
+          targetType: normalizePostTargetType(result.moderation.targetType),
+          reasons: result.moderation.reasons,
+          guidanceFamily: result.moderation.guidance?.family ?? null
+        })}`
+      );
     }
 
     if (result.moderation?.action === "soft_hold" || result.moderation?.action === "safety_hold") {
-      redirect(`/wave/${result.id}?held=${result.moderation.action}`);
+      redirect(
+        `/wave/${result.id}?${buildModerationQuery({
+          action: result.moderation.action,
+          targetType: normalizePostTargetType(result.moderation.targetType),
+          reasons: result.moderation.reasons,
+          guidanceFamily: result.moderation.guidance?.family ?? null
+        })}`
+      );
     }
 
     redirect(`/wave/${result.id}`);
@@ -193,9 +238,34 @@ export async function createWavePostAction(formData: FormData) {
     const message = error instanceof Error ? error.message : "invalid-post";
 
     try {
-      const parsed = JSON.parse(message) as { error?: string };
+      const parsed = JSON.parse(message) as {
+        error?: string;
+        moderation?: {
+          targetType: "post_title" | "post_body";
+          action: "hard_block";
+          reasons: string[];
+          guidance?: {
+            family?: string;
+          } | null;
+        };
+      };
       if (parsed.error === "content-hard-block") {
-        redirect("/write?error=content-hard-block");
+        const params = new URLSearchParams({
+          error: "content-hard-block"
+        });
+
+        if (parsed.moderation) {
+          params.set("action", parsed.moderation.action);
+          params.set("targetType", parsed.moderation.targetType);
+          if (parsed.moderation.reasons.length) {
+            params.set("reasons", parsed.moderation.reasons.join(","));
+          }
+          if (parsed.moderation.guidance?.family) {
+            params.set("guidanceFamily", parsed.moderation.guidance.family);
+          }
+        }
+
+        redirect(`/write?${params.toString()}`);
       }
     } catch {
       // ignore malformed non-JSON errors

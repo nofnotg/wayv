@@ -1,5 +1,11 @@
-import type { WaveDetail as WaveDetailData, WaveReactionType } from "@/lib/domain/types";
+import type {
+  ContentGuardrailGuidanceFamily,
+  ContentGuardrailReason,
+  WaveDetail as WaveDetailData,
+  WaveReactionType
+} from "@/lib/domain/types";
 import { StatusChip } from "@/components/status-chip";
+import { ModerationFeedbackCard } from "@/features/moderation/moderation-feedback-card";
 import { systemCopy } from "@/lib/copy/system-copy";
 import { formatDateTime } from "@/lib/utils";
 
@@ -11,6 +17,15 @@ type WaveDetailProps = {
   post: WaveDetailData;
   isAuthenticated: boolean;
   submissionNotice?: string | null;
+  moderationFeedback?: {
+    targetType: "post_title" | "post_body";
+    targetId?: string | null;
+    action: "allow_with_guidance" | "soft_hold" | "safety_hold" | "hard_block";
+    reasons: ContentGuardrailReason[];
+    guidanceFamily?: ContentGuardrailGuidanceFamily | null;
+    retryAttempted?: boolean;
+    retrySucceeded?: boolean | null;
+  } | null;
   reactionCatalog: {
     reactionType: WaveReactionType;
     label: string;
@@ -21,6 +36,7 @@ export function WaveDetail({
   post,
   isAuthenticated,
   submissionNotice = null,
+  moderationFeedback = null,
   reactionCatalog
 }: WaveDetailProps) {
   return (
@@ -73,6 +89,21 @@ export function WaveDetail({
         {post.moderation.canReport ? (
           <div className="mt-6">
             <ReportAction targetType="post" targetId={post.id} isAuthenticated={isAuthenticated} />
+          </div>
+        ) : null}
+        {moderationFeedback ? (
+          <div className="mt-6">
+            <ModerationFeedbackCard
+              targetType={moderationFeedback.targetType}
+              targetId={moderationFeedback.targetId}
+              action={moderationFeedback.action}
+              reasons={moderationFeedback.reasons}
+              guidanceFamily={moderationFeedback.guidanceFamily}
+              retryAttempted={moderationFeedback.retryAttempted}
+              retrySucceeded={moderationFeedback.retrySucceeded}
+              title="방금 moderation 안내가 어땠는지 남겨주세요"
+              description="post 흐름을 다듬는 베타 참고로만 쓰여요."
+            />
           </div>
         ) : null}
       </article>

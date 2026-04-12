@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
 
+import type {
+  ContentGuardrailGuidanceFamily,
+  ContentGuardrailReason
+} from "@/lib/domain/types";
 import { WaveDetail } from "@/features/waves/wave-detail";
 import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
 import { getWaveDetailById } from "@/lib/services/posts-service";
@@ -22,16 +26,49 @@ export default async function WaveDetailPage({ params, searchParams }: WaveDetai
     notFound();
   }
 
+  const action =
+    typeof query.held === "string"
+      ? query.held
+      : typeof query.guidance === "string"
+        ? "allow_with_guidance"
+        : null;
+  const targetType =
+    typeof query.targetType === "string" && query.targetType === "post_title"
+      ? "post_title"
+      : "post_body";
+  const reasons =
+    typeof query.reasons === "string"
+      ? query.reasons
+          .split(",")
+          .map((reason) => reason.trim())
+          .filter(Boolean)
+      : [];
+  const guidanceFamily =
+    typeof query.guidanceFamily === "string" ? query.guidanceFamily : null;
+
   return (
     <WaveDetail
       post={post}
       isAuthenticated
       reactionCatalog={getReactionCatalog()}
+      moderationFeedback={
+        action === "allow_with_guidance" || action === "soft_hold" || action === "safety_hold"
+          ? {
+              targetType,
+              targetId: post.id,
+              action,
+              reasons: reasons as ContentGuardrailReason[],
+              guidanceFamily: guidanceFamily as ContentGuardrailGuidanceFamily | null,
+              retryAttempted: false,
+              retrySucceeded: true
+            }
+          : null
+      }
       submissionNotice={
         typeof query.guidance === "string"
-          ? "파도지기가 공감에 가까운 말로 남겨 달라는 안내를 함께 전했어요."
+          ? "이 흐름은 공감에 더 가까운 말로 남을 수 있도록 안내를 함께 붙였어요."
           : typeof query.held === "string"
-            ? "이 파도는 운영 확인을 위해 잠시 보류되었어요. 확인이 끝나면 다시 이어질 수 있어요."
+            ? "이 파도는 운영 확인을 위해 잠시 머물러 있어요. 확인이 끝나면 다시 이어질 수 있어요."
             : null
       }
     />

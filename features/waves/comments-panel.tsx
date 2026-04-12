@@ -3,9 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { ModerationFeedbackCard } from "@/features/moderation/moderation-feedback-card";
 import { ReportAction } from "@/features/moderation/report-action";
 import { systemCopy } from "@/lib/copy/system-copy";
-import type { WaveComment } from "@/lib/domain/types";
+import type {
+  ContentGuardrailGuidanceFamily,
+  ContentGuardrailReason,
+  ContentGuardrailTargetType,
+  WaveComment
+} from "@/lib/domain/types";
 import { formatDateTime } from "@/lib/utils";
 
 type CommentsPanelProps = {
@@ -26,6 +32,15 @@ export function CommentsPanel({
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [moderationFeedbackState, setModerationFeedbackState] = useState<{
+    targetType: ContentGuardrailTargetType;
+    targetId?: string | null;
+    action: "allow_with_guidance" | "soft_hold" | "safety_hold" | "hard_block";
+    reasons: ContentGuardrailReason[];
+    guidanceFamily?: ContentGuardrailGuidanceFamily | null;
+    retryAttempted?: boolean;
+    retrySucceeded?: boolean | null;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const submitComment = () => {
@@ -45,6 +60,17 @@ export function CommentsPanel({
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
+        if (data?.moderation?.action) {
+          setModerationFeedbackState({
+            targetType: data.moderation.targetType,
+            targetId: null,
+            action: data.moderation.action,
+            reasons: data.moderation.reasons ?? [],
+            guidanceFamily: data.moderation.guidance?.family ?? null,
+            retryAttempted: true,
+            retrySucceeded: false
+          });
+        }
         if (data?.moderation?.guidance?.description) {
           setError(data.moderation.guidance.description);
           return;
@@ -64,6 +90,19 @@ export function CommentsPanel({
       setBody("");
       setError(null);
       setNotice(data?.moderation?.guidance?.description ?? null);
+      if (data?.moderation?.action) {
+        setModerationFeedbackState({
+          targetType: data.moderation.targetType,
+          targetId: data.commentId ?? null,
+          action: data.moderation.action,
+          reasons: data.moderation.reasons ?? [],
+          guidanceFamily: data.moderation.guidance?.family ?? null,
+          retryAttempted: false,
+          retrySucceeded: true
+        });
+      } else {
+        setModerationFeedbackState(null);
+      }
       router.refresh();
     });
   };
@@ -126,6 +165,19 @@ export function CommentsPanel({
             </div>
             {error ? <p className="text-sm text-rose-700">{error}</p> : null}
             {notice ? <p className="text-sm text-amber-700">{notice}</p> : null}
+            {moderationFeedbackState ? (
+              <ModerationFeedbackCard
+                targetType={moderationFeedbackState.targetType}
+                targetId={moderationFeedbackState.targetId}
+                action={moderationFeedbackState.action}
+                reasons={moderationFeedbackState.reasons}
+                guidanceFamily={moderationFeedbackState.guidanceFamily}
+                retryAttempted={moderationFeedbackState.retryAttempted}
+                retrySucceeded={moderationFeedbackState.retrySucceeded}
+                title="방금 moderation 안내가 어땠는지 남겨주세요"
+                description="comment 흐름을 다듬는 베타 참고로만 쓰여요."
+              />
+            ) : null}
             <button
               type="button"
               onClick={submitComment}

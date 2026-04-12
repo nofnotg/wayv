@@ -137,6 +137,7 @@ export async function createComment(
   revalidatePath(`/wave/${postId}`);
   const comments = await listCommentsForPost(postId, userId);
   return {
+    commentId: String(data.id),
     comments,
     moderation: guardrail
   };

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
 import { BetaAccessPanel } from "@/features/operator/beta-access-panel";
+import { ModerationFeedbackPanel } from "@/features/operator/moderation-feedback-panel";
 import { OperatorConsole } from "@/features/operator/operator-console";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
@@ -12,6 +13,7 @@ import type {
   BetaAccessRequest,
   BetaFeedback,
   ContentGuardrailFlag,
+  ModerationFeedback,
   NotificationProviderValidationEntry,
   ProductEventLog
 } from "@/lib/domain/types";
@@ -35,6 +37,7 @@ import {
   listModerationAuditLogs,
   listModerationReports
 } from "@/lib/services/moderation-admin-service";
+import { listRecentModerationFeedback } from "@/lib/services/moderation-feedback-service";
 import { listNotificationDeliveryEvents } from "@/lib/services/notification-delivery-service";
 import { getOperatorAccess } from "@/lib/services/operator-access-service";
 import { listRecentProductEvents, summarizeProductEvents } from "@/lib/services/product-event-service";
@@ -97,6 +100,7 @@ export default async function OperatorPage() {
     betaAccessRequests,
     betaAccessAudits,
     betaFeedback,
+    moderationFeedback,
     productEvents,
     guardrailFlags,
     seedContentStatus,
@@ -113,6 +117,7 @@ export default async function OperatorPage() {
     listBetaAccessRequests({ limit: 12 }),
     listRecentBetaAccessAuditLogs(12),
     listRecentBetaFeedback(12),
+    listRecentModerationFeedback(20),
     listRecentProductEvents(16),
     listRecentContentGuardrailFlags(12),
     getSeedContentStatus(),
@@ -194,6 +199,8 @@ export default async function OperatorPage() {
         initialRequests={betaAccessRequests as BetaAccessRequest[]}
         initialAudits={betaAccessAudits as BetaAccessAuditLog[]}
       />
+
+      <ModerationFeedbackPanel initialFeedback={moderationFeedback as ModerationFeedback[]} />
 
       <OperatorConsole
         initialReports={reports}

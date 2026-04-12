@@ -16,6 +16,15 @@ type GuidanceTemplate = {
   description: string;
 };
 
+const familyFlowLead: Record<ContentGuardrailGuidanceFamily, string> = {
+  advice_or_preaching: "이 흐름은 해결보다 곁에 머무는 말에 더 오래 남아요.",
+  ridicule_or_mockery: "이 파도는 사람을 밀어내는 말보다 다정한 읽힘에 더 가까워져요.",
+  blame_or_attack: "이 물결은 단정과 공격보다 마음의 결을 드러내는 말에 더 가까워져요.",
+  profanity_or_harsh_tone: "이 흐름은 거친 가장자리보다 마음의 무게가 보이는 말에 더 오래 머물러요.",
+  privacy_exposure: "이 해안은 바깥으로 닿는 식별자 없이도 충분히 이어질 수 있어요.",
+  crisis_signal: ""
+};
+
 const guidanceFamilies = guidanceSeed.families as Record<
   ContentGuardrailGuidanceFamily,
   GuidanceFamilySeed
@@ -35,10 +44,13 @@ function softenGuidanceCopy(input: string) {
 function buildTemplates(family: ContentGuardrailGuidanceFamily): GuidanceTemplate[] {
   const source = guidanceFamilies[family];
   const count = Math.max(source.title_pool.length, source.message_pool.length);
+  const lead = familyFlowLead[family];
 
   return Array.from({ length: count }, (_, index) => ({
     title: softenGuidanceCopy(source.title_pool[index % source.title_pool.length]),
-    description: softenGuidanceCopy(source.message_pool[index % source.message_pool.length])
+    description: [lead, softenGuidanceCopy(source.message_pool[index % source.message_pool.length])]
+      .filter(Boolean)
+      .join(" ")
   }));
 }
 
