@@ -1,0 +1,589 @@
+{
+  "version": "v1.0",
+  "source": "merged_from_external_llm_outputs",
+  "adoption_policy": {
+    "as_is": [
+      "normalization_lexicon.json basic structure",
+      "evasion_patterns.json pipeline order"
+    ],
+    "adapted_for_wayv": [
+      "category names mapped to current wayv reason taxonomy",
+      "beta_minimum vs expansion split"
+    ],
+    "do_not_apply_yet": [
+      "euphemism-only crisis expressions as hard block without operator review",
+      "broad imperative-ending only rules without context"
+    ]
+  },
+  "beta_minimum_reasons": [
+    "crisis_signal",
+    "privacy_exposure",
+    "explicit_profanity",
+    "blame_or_attack",
+    "spam_or_external_pull"
+  ],
+  "expansion_reasons": [
+    "ridicule_or_mockery",
+    "unsolicited_advice",
+    "harsh_tone",
+    "evasion_pattern"
+  ],
+  "pipeline_order": [
+    "R01",
+    "R02",
+    "R03",
+    "R04",
+    "R05",
+    "R06",
+    "R07",
+    "R08",
+    "R09",
+    "R10"
+  ],
+  "keyboard_layout_presets": {
+    "dubeolsik": {
+      "description": "두벌식 표준 자판",
+      "consonants_kr_to_en": {
+        "ㄱ": "r",
+        "ㄲ": "R",
+        "ㄴ": "s",
+        "ㄷ": "e",
+        "ㄸ": "E",
+        "ㄹ": "f",
+        "ㅁ": "a",
+        "ㅂ": "q",
+        "ㅃ": "Q",
+        "ㅅ": "t",
+        "ㅆ": "T",
+        "ㅇ": "d",
+        "ㅈ": "w",
+        "ㅉ": "W",
+        "ㅊ": "c",
+        "ㅋ": "z",
+        "ㅌ": "x",
+        "ㅍ": "v",
+        "ㅎ": "g"
+      }
+    }
+  },
+  "crisis_fast_path": {
+    "description": "crisis P0 패턴은 score 계산 없이 즉시 차단 및 운영자 알림",
+    "patterns": [
+      "자해",
+      "자살",
+      "ㅈㅎ",
+      "ㅈㅅ",
+      "죽고싶",
+      "ㅈㄱㅅ",
+      "극단적 선택",
+      "극단선택",
+      "end it",
+      "kill myself",
+      "die now"
+    ],
+    "action": "BLOCK_IMMEDIATE + NOTIFY_OPERATOR"
+  },
+  "entries": [
+    {
+      "canonical": "씨발",
+      "reason": "explicit_profanity",
+      "family": "jamo_split",
+      "variants": [
+        "ㅅㅂ",
+        "ㅅ1발",
+        "시발",
+        "씨.발",
+        "씨_발",
+        "씨 발",
+        "씨바",
+        "십발"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "ㅅㅂ는 일반 약어와 충돌 가능, 문맥 스코어 병행"
+    },
+    {
+      "canonical": "씨발",
+      "reason": "explicit_profanity",
+      "family": "keyboard_switch",
+      "variants": [
+        "tlqkf",
+        "tnlqkf",
+        "tkdlf"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "한→영 자판 역변환 적용"
+    },
+    {
+      "canonical": "씨발",
+      "reason": "explicit_profanity",
+      "family": "phonetic_latin",
+      "variants": [
+        "sibal",
+        "ssibal",
+        "xibal",
+        "c1bal"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "외래어와 구분 필요 (드물음)"
+    },
+    {
+      "canonical": "개새끼",
+      "reason": "explicit_profanity",
+      "family": "jamo_split",
+      "variants": [
+        "ㄱㅅㄲ",
+        "개ㅅㄲ",
+        "개새.끼",
+        "개 새끼"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "고빈도 욕설"
+    },
+    {
+      "canonical": "병신",
+      "reason": "explicit_profanity",
+      "family": "spaced_obfuscation",
+      "variants": [
+        "병 신",
+        "병.신",
+        "병*신",
+        "ㅂㅅ",
+        "bshin",
+        "byeong sin"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "ㅂㅅ는 '버스' 약어와 충돌 가능"
+    },
+    {
+      "canonical": "미친",
+      "reason": "explicit_profanity",
+      "family": "spaced_obfuscation",
+      "variants": [
+        "미.친",
+        "ㅁㅊ",
+        "ㅁ친",
+        "mi chin",
+        "michin",
+        "mich1n"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "긍정 강조 맥락과 구분 필요"
+    },
+    {
+      "canonical": "존나",
+      "reason": "explicit_profanity",
+      "family": "phonetic_latin",
+      "variants": [
+        "ㅈㄴ",
+        "졸나",
+        "jonna",
+        "zona",
+        "존.나"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "강조 부사로도 사용, 문맥 판단 필요"
+    },
+    {
+      "canonical": "닥쳐",
+      "reason": "explicit_profanity",
+      "family": "direct",
+      "variants": [
+        "닥쳐",
+        "닥쳐라",
+        "입닥",
+        "ㄷㅊ",
+        "닥치"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "명령형 욕설"
+    },
+    {
+      "canonical": "꺼져",
+      "reason": "explicit_profanity",
+      "family": "direct",
+      "variants": [
+        "꺼져",
+        "꺼지세요",
+        "꺼지라고",
+        "ㄲㅈ"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "blame 카테고리와 중복"
+    },
+    {
+      "canonical": "한심",
+      "reason": "blame_or_attack",
+      "family": "direct",
+      "variants": [
+        "한심하다",
+        "한심하네",
+        "한심해",
+        "ㅎㅅ",
+        "한심한 것"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "자기 자신에게 쓰는 경우 제외 검토"
+    },
+    {
+      "canonical": "꼴값",
+      "reason": "blame_or_attack",
+      "family": "direct",
+      "variants": [
+        "꼴값하다",
+        "꼴값이다",
+        "꼴값 떨다",
+        "꼴통",
+        "꼴불견"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "타인 지칭 여부 문맥 확인 권장"
+    },
+    {
+      "canonical": "네 탓",
+      "reason": "blame_or_attack",
+      "family": "framing",
+      "variants": [
+        "네 탓이야",
+        "니 탓",
+        "니 잘못",
+        "네 잘못",
+        "본인 탓"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "expansion",
+      "notes": "자기반성 맥락과 구분"
+    },
+    {
+      "canonical": "유난",
+      "reason": "blame_or_attack",
+      "family": "framing",
+      "variants": [
+        "유난이다",
+        "유난 떤다",
+        "유난 피운다",
+        "오버한다",
+        "오버야",
+        "예민하게 굴다"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "일상 대화에서 자주 등장, 오탐 주의"
+    },
+    {
+      "canonical": "주제파악",
+      "reason": "blame_or_attack",
+      "family": "direct",
+      "variants": [
+        "주제파악 못한다",
+        "주제를 알아라",
+        "분수를 알아",
+        "분수껏"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "훈계와 중복"
+    },
+    {
+      "canonical": "웃기다",
+      "reason": "ridicule_or_mockery",
+      "family": "sarcasm_lexicon",
+      "variants": [
+        "웃기네",
+        "웃겨 죽겠다",
+        "웃기지 마",
+        "웃긴 소리"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "긍정 문맥 다수, LLM 2차 권장"
+    },
+    {
+      "canonical": "비웃음",
+      "reason": "ridicule_or_mockery",
+      "family": "direct",
+      "variants": [
+        "비웃다",
+        "비웃네",
+        "비웃음만 나온다",
+        "피식"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "expansion",
+      "notes": "명확한 부정 문맥"
+    },
+    {
+      "canonical": "어이없다",
+      "reason": "ridicule_or_mockery",
+      "family": "dismissive",
+      "variants": [
+        "어이없어",
+        "어이없네",
+        "황당하다",
+        "기가 차다",
+        "기가 막혀"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "공감 표현과 중복 가능, 문맥 필요"
+    },
+    {
+      "canonical": "정신차려",
+      "reason": "unsolicited_advice",
+      "family": "prescriptive",
+      "variants": [
+        "정신 좀 차려",
+        "정신차려라",
+        "정신 차리세요",
+        "정신줄 잡아"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "expansion",
+      "notes": "고빈도, 명확한 훈계"
+    },
+    {
+      "canonical": "버텨",
+      "reason": "unsolicited_advice",
+      "family": "imperative_ending",
+      "variants": [
+        "버텨야 해",
+        "버텨라",
+        "참아야지",
+        "참아",
+        "견뎌"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "응원 문맥과 구분 어려움"
+    },
+    {
+      "canonical": "그냥 해",
+      "reason": "unsolicited_advice",
+      "family": "prescriptive",
+      "variants": [
+        "그냥 하면 돼",
+        "답은 뻔해",
+        "당연히 해야지",
+        "해야지 어쩌겠어"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "명령형 어미 + 처방형 구조"
+    },
+    {
+      "canonical": "자해",
+      "reason": "crisis_signal",
+      "family": "direct",
+      "variants": [
+        "자해",
+        "자해하다",
+        "ㅈㅎ",
+        "자ㅎ",
+        "자 해"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "P0 즉시 처리"
+    },
+    {
+      "canonical": "자살",
+      "reason": "crisis_signal",
+      "family": "direct",
+      "variants": [
+        "자살",
+        "자살하다",
+        "ㅈㅅ",
+        "자ㅅ",
+        "자 살",
+        "jsl"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "P0 즉시 처리"
+    },
+    {
+      "canonical": "죽고싶다",
+      "reason": "crisis_signal",
+      "family": "jamo_split",
+      "variants": [
+        "죽고싶다",
+        "ㅈㄱㅅ",
+        "죽고 싶어",
+        "죽어버리고싶다",
+        "die",
+        "end it",
+        "kill myself"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "허구/가사 인용과 구분 어려움, LLM 2차 권장"
+    },
+    {
+      "canonical": "사라지고싶다",
+      "reason": "crisis_signal",
+      "family": "euphemism",
+      "variants": [
+        "영원히 사라지고 싶다",
+        "없어지고 싶다",
+        "없어지면 좋겠다",
+        "사라졌으면 해"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "단독 판단 어려움, LLM 2차 필수"
+    },
+    {
+      "canonical": "극단적선택",
+      "reason": "crisis_signal",
+      "family": "euphemism",
+      "variants": [
+        "극단적인 선택",
+        "극단선택",
+        "마지막 선택",
+        "돌이킬 수 없는 선택"
+      ],
+      "regex": null,
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "언론 보도 문체에서도 등장, 문맥 주의"
+    },
+    {
+      "canonical": "전화번호",
+      "reason": "privacy_exposure",
+      "family": "regex_pattern",
+      "variants": [
+        "010-XXXX-XXXX",
+        "010 XXXX XXXX",
+        "010.XXXX.XXXX"
+      ],
+      "regex": "\\b01[016789][- .]?\\d{3,4}[- .]?\\d{4}\\b",
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "공백·하이픈·점 구분자 모두 처리"
+    },
+    {
+      "canonical": "계좌번호",
+      "reason": "privacy_exposure",
+      "family": "regex_pattern",
+      "variants": [
+        "XXX-XX-XXXXXX",
+        "XXXX-XXXX-XXXX-XXXX"
+      ],
+      "regex": "\\d{3,4}[- ]\\d{2,6}[- ]\\d{4,}",
+      "confidence": "medium",
+      "stage": "expansion",
+      "notes": "일반 숫자열과 충돌 주의, 문맥 키워드 병행"
+    },
+    {
+      "canonical": "이메일",
+      "reason": "privacy_exposure",
+      "family": "regex_pattern",
+      "variants": [
+        "xxx@xxx.com",
+        "xxx@xxx.co.kr"
+      ],
+      "regex": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "개인 연락처 공유 vs 일반 이메일 언급 구분"
+    },
+    {
+      "canonical": "카카오ID",
+      "reason": "privacy_exposure",
+      "family": "direct",
+      "variants": [
+        "카톡:",
+        "카카오:",
+        "kt:",
+        "카톡id",
+        "오픈채팅",
+        "오카"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "키워드 + 콜론/공백 패턴"
+    },
+    {
+      "canonical": "텔레그램",
+      "reason": "spam_or_external_pull",
+      "family": "direct",
+      "variants": [
+        "텔레",
+        "텔레그램",
+        "tele",
+        "telegram",
+        "t.me/"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "일반 언급과 유도 구분, 문맥 키워드 병행"
+    },
+    {
+      "canonical": "인스타DM",
+      "reason": "spam_or_external_pull",
+      "family": "direct",
+      "variants": [
+        "인스타 DM",
+        "인스타dm",
+        "ig dm",
+        "인스타 팔로우",
+        "DM 줘"
+      ],
+      "regex": null,
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "단순 언급과 유도 구분"
+    },
+    {
+      "canonical": "URL",
+      "reason": "spam_or_external_pull",
+      "family": "regex_pattern",
+      "variants": [
+        "http://",
+        "https://",
+        "bit.ly/",
+        "tinyurl.com"
+      ],
+      "regex": "https?://[^\\s]+",
+      "confidence": "high",
+      "stage": "beta_minimum",
+      "notes": "whitelist 운영 권장"
+    }
+  ]
+}

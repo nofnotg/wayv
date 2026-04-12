@@ -1,69 +1,123 @@
+import normalizationSeed from "@/lib/wayv_normalization_seed_v1.json";
 import type { ContentGuardrailReason } from "@/lib/domain/types";
 
-export const contentGuardrailExplicitProfanityTerms = [
-  "시발",
-  "씨발",
-  "씨팔",
-  "병신",
-  "개새끼",
-  "지랄",
+type NormalizationSeedStage = "beta_minimum" | "expansion";
+
+export type ContentGuardrailNormalizationSeedEntry = {
+  canonical: string;
+  reason: ContentGuardrailReason;
+  family: string;
+  variants: string[];
+  regex: string | null;
+  confidence: "low" | "medium" | "high";
+  stage: NormalizationSeedStage;
+  notes: string;
+};
+
+function uniqueTerms(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+const normalizationEntries =
+  normalizationSeed.entries as ContentGuardrailNormalizationSeedEntry[];
+
+function collectSeedTerms(
+  reason: ContentGuardrailReason,
+  stages: NormalizationSeedStage[]
+) {
+  return uniqueTerms(
+    normalizationEntries
+      .filter((entry) => entry.reason === reason && stages.includes(entry.stage))
+      .flatMap((entry) => [entry.canonical, ...entry.variants])
+  );
+}
+
+export const contentGuardrailNormalizationSeedVersion = normalizationSeed.version;
+export const contentGuardrailNormalizationPipelineOrder =
+  normalizationSeed.pipeline_order as string[];
+
+export const contentGuardrailNormalizationBetaMinimumEntries = normalizationEntries.filter(
+  (entry) => entry.stage === "beta_minimum"
+);
+
+export const contentGuardrailKeyboardLayoutPresets =
+  normalizationSeed.keyboard_layout_presets;
+
+export const contentGuardrailCrisisFastPathPatterns = uniqueTerms(
+  normalizationSeed.crisis_fast_path.patterns as string[]
+);
+
+export const contentGuardrailExplicitProfanityTerms = uniqueTerms([
+  ...collectSeedTerms("explicit_profanity", ["beta_minimum"]),
   "fuck",
   "fucking",
-  "bitch"
-] as const;
+  "bitch",
+  "shit",
+  "지랄"
+]);
 
-export const contentGuardrailRidiculeTerms = [
-  "한심",
-  "꼴값",
+export const contentGuardrailRidiculeTerms = uniqueTerms([
+  "비웃다",
+  "비웃네",
+  "비웃음",
   "웃기네",
-  "비웃",
-  "조롱",
-  "비꼬"
-] as const;
+  "웃겨 죽겠네",
+  "어이없어",
+  "어이없네",
+  "황당하네",
+  "기가 차네"
+]);
 
-export const contentGuardrailBlameTerms = [
+export const contentGuardrailBlameTerms = uniqueTerms([
+  ...collectSeedTerms("blame_or_attack", ["beta_minimum"]),
   "네 탓",
   "니 탓",
   "너 때문",
   "당신 때문",
-  "네가 잘못",
-  "니가 잘못"
-] as const;
+  "네 잘못",
+  "니 잘못",
+  "본인 탓"
+]);
 
-export const contentGuardrailAdviceTerms = [
+export const contentGuardrailAdviceTerms = uniqueTerms([
   "정신 차려",
+  "정신 좀 차려",
   "버텨",
+  "버텨야 해",
   "참아",
-  "잊어",
+  "참아야지",
+  "그냥 해",
   "그만해",
   "해라",
   "해야지",
-  "해야 돼"
-] as const;
+  "해야 돼",
+  "잊어"
+]);
 
-export const contentGuardrailCrisisTerms = [
-  "죽고 싶",
-  "죽고싶",
-  "사라지고 싶",
-  "사라지고싶",
-  "자해",
-  "ㅈㅅ",
-  "극단적 선택",
-  "suicide",
-  "self-harm"
-] as const;
+export const contentGuardrailCrisisTerms = uniqueTerms([
+  ...collectSeedTerms("crisis_signal", ["beta_minimum"]),
+  ...contentGuardrailCrisisFastPathPatterns
+]);
 
-export const contentGuardrailExternalPullTerms = [
+export const contentGuardrailPrivacyTerms = uniqueTerms([
+  ...collectSeedTerms("privacy_exposure", ["beta_minimum"]),
   "카톡",
+  "카카오",
+  "카카오id",
   "오픈채팅",
-  "오픈 채팅",
+  "오카"
+]);
+
+export const contentGuardrailExternalPullTerms = uniqueTerms([
+  ...collectSeedTerms("spam_or_external_pull", ["beta_minimum"]),
   "dm",
   "디엠",
-  "텔레그램",
-  "인스타",
-  "번호로",
+  "인스타 dm",
+  "ig dm",
+  "telegram",
+  "t.me/",
   "follow me"
-] as const;
+]);
 
 export const contentGuardrailDefaultAllowlist: Partial<
   Record<ContentGuardrailReason, string[]>
