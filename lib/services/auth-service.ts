@@ -23,7 +23,7 @@ export async function requestSignInLink(input: { email: string; next?: string })
   }
 
   const supabase = await createServerSupabaseClient();
-  const redirectTo = new URL("/auth/sign-in", getAppUrl());
+  const redirectTo = new URL("/auth/callback", getAppUrl());
   redirectTo.searchParams.set("next", sanitizeNextPath(parsed.data.next));
 
   const { error } = await supabase.auth.signInWithOtp({
