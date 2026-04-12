@@ -10,6 +10,10 @@ import {
   restModeSchema,
   restModeStartSchema
 } from "@/lib/validation/schemas";
+import {
+  evaluateContentGuardrail,
+  recordContentGuardrailFlag
+} from "@/lib/services/content-guardrail-service";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 import { clamp } from "@/lib/utils";
 
@@ -23,6 +27,32 @@ export async function updateProfileSettings(input: {
   const parsed = profileSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("invalid-profile");
+  }
+
+  const bio = parsed.data.bio?.trim() ?? "";
+  const guardrail = bio
+    ? evaluateContentGuardrail({
+        targetType: "profile_bio",
+        text: bio,
+        userId
+      })
+    : null;
+
+  if (guardrail && guardrail.action !== "allow" && guardrail.action !== "allow_with_guidance") {
+    await recordContentGuardrailFlag({
+      targetType: guardrail.targetType,
+      targetId: userId,
+      userId,
+      action: guardrail.action,
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: bio,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
+    });
+    throw new Error(JSON.stringify({ error: "content-held", moderation: guardrail }));
   }
 
   const now = new Date().toISOString();
@@ -40,9 +70,25 @@ export async function updateProfileSettings(input: {
     })
     .eq("id", userId);
 
+  if (guardrail && guardrail.action === "allow_with_guidance") {
+    await recordContentGuardrailFlag({
+      targetType: guardrail.targetType,
+      targetId: userId,
+      userId,
+      action: guardrail.action,
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: bio,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
+    });
+  }
+
   revalidatePath("/profile");
   revalidatePath("/");
-  return { ok: true as const };
+  return { ok: true as const, moderation: guardrail };
 }
 
 export async function updateNotificationPreferences(input: {
@@ -161,7 +207,7 @@ export async function updateProfileAction(formData: FormData) {
   }
 
   try {
-    await updateProfileSettings(
+    const result = await updateProfileSettings(
       {
         nickname: String(formData.get("nickname") ?? ""),
         displayName: String(formData.get("displayName") ?? "") || null,
@@ -171,8 +217,20 @@ export async function updateProfileAction(formData: FormData) {
       },
       viewer.userId
     );
+    if (result.moderation?.action === "allow_with_guidance") {
+      redirect("/profile?status=saved&notice=wave-keeper");
+    }
     redirect("/profile?status=saved");
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid-profile";
+    try {
+      const parsed = JSON.parse(message) as { error?: string };
+      if (parsed.error === "content-held") {
+        redirect("/profile?error=moderation");
+      }
+    } catch {
+      // ignore malformed non-JSON errors
+    }
     redirect("/profile?error=invalid-profile");
   }
 }

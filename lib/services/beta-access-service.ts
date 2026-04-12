@@ -9,6 +9,10 @@ import {
   betaAccessListQuerySchema,
   betaApplicationSchema
 } from "@/lib/validation/schemas";
+import {
+  evaluateContentGuardrail,
+  recordContentGuardrailFlag
+} from "@/lib/services/content-guardrail-service";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -163,6 +167,27 @@ export async function submitBetaApplication(input: {
   const parsed = betaApplicationSchema.parse(input);
   const normalizedEmail = normalizeEmail(parsed.email);
   const userId = input.userId ?? null;
+  const guardrail = evaluateContentGuardrail({
+    targetType: "beta_application_note",
+    text: parsed.applicationNote,
+    userId
+  });
+
+  if (guardrail.action === "hard_block") {
+    await recordContentGuardrailFlag({
+      targetType: guardrail.targetType,
+      userId,
+      action: guardrail.action,
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: parsed.applicationNote,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
+    });
+    throw new Error(JSON.stringify({ error: "content-hard-block", moderation: guardrail }));
+  }
 
   const existing = userId
     ? (await getRequestByUserId(userId)) ?? (await getRequestByEmail(normalizedEmail))
@@ -198,7 +223,23 @@ export async function submitBetaApplication(input: {
       note: parsed.applicationNote
     });
 
-    return { request, audit };
+    if (guardrail.action !== "allow") {
+      await recordContentGuardrailFlag({
+        targetType: guardrail.targetType,
+        targetId: request.id,
+        userId: request.userId,
+        action: guardrail.action,
+        reasons: guardrail.reasons,
+        matchedTerms: guardrail.matchedTerms,
+        contentExcerpt: guardrail.contentExcerpt,
+        originalText: parsed.applicationNote,
+        severity: guardrail.severity,
+        suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+        guidanceFamily: guardrail.guidance?.family ?? null
+      });
+    }
+
+    return { request, audit, moderation: guardrail };
   }
 
   const nextStatus: BetaAccessStatus =
@@ -229,7 +270,23 @@ export async function submitBetaApplication(input: {
         })
       : null;
 
-  return { request, audit };
+  if (guardrail.action !== "allow") {
+    await recordContentGuardrailFlag({
+      targetType: guardrail.targetType,
+      targetId: request.id,
+      userId: request.userId,
+      action: guardrail.action,
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: parsed.applicationNote,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
+    });
+  }
+
+  return { request, audit, moderation: guardrail };
 }
 
 export async function listBetaAccessRequests(input?: {

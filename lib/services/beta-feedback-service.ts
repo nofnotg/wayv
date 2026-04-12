@@ -2,6 +2,10 @@ import type { BetaFeedback, BetaFeedbackCategory } from "@/lib/domain/types";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
 import { feedbackSubmissionSchema } from "@/lib/validation/schemas";
 
+import {
+  evaluateContentGuardrail,
+  recordContentGuardrailFlag
+} from "@/lib/services/content-guardrail-service";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
 type BetaFeedbackRow = Record<string, unknown>;
@@ -32,6 +36,28 @@ export async function submitBetaFeedback(
     throw new Error("invalid-feedback");
   }
 
+  const guardrail = evaluateContentGuardrail({
+    targetType: "feedback_message",
+    text: parsed.data.message,
+    userId: userId ?? null
+  });
+
+  if (guardrail.action === "hard_block") {
+    await recordContentGuardrailFlag({
+      targetType: guardrail.targetType,
+      userId: userId ?? null,
+      action: guardrail.action,
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: parsed.data.message,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
+    });
+    throw new Error(JSON.stringify({ error: "content-hard-block", moderation: guardrail }));
+  }
+
   const supabase = createAdminSupabaseClient();
   const { data, error } = await supabase
     .from("beta_feedback")
@@ -60,7 +86,25 @@ export async function submitBetaFeedback(
     }
   });
 
-  return mapBetaFeedbackRow(data);
+  const feedback = mapBetaFeedbackRow(data);
+
+  if (guardrail.action !== "allow") {
+    await recordContentGuardrailFlag({
+      targetType: guardrail.targetType,
+      targetId: feedback.id,
+      userId: userId ?? null,
+      action: guardrail.action,
+      reasons: guardrail.reasons,
+      matchedTerms: guardrail.matchedTerms,
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: parsed.data.message,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
+    });
+  }
+
+  return { feedback, moderation: guardrail };
 }
 
 export async function listRecentBetaFeedback(limit = 20) {

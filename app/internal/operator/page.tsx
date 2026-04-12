@@ -133,8 +133,7 @@ export default async function OperatorPage() {
 
       <SectionCard title="배포 베타 점검">
         <p className="text-sm leading-7 text-slate-600">
-          배포 후에도 운영 화면 안에서 바로 베타 준비 상태를 확인할 수 있게 핵심 점검만 묶어
-          두었어요.
+          배포 이후에도 운영 화면 안에서 바로 베타 준비 상태를 확인할 수 있게 점검 묶음을 두었어요.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {[
@@ -149,12 +148,12 @@ export default async function OperatorPage() {
               status: betaSelfCheck.authFlowReadiness.status
             },
             {
-              title: "운영자 bootstrap",
+              title: "운영자 부트스트랩",
               summary: betaSelfCheck.operatorBootstrapReadiness.summary,
               status: betaSelfCheck.operatorBootstrapReadiness.status
             },
             {
-              title: "검토/export",
+              title: "검토 export",
               summary: betaSelfCheck.reviewExportReadiness.summary,
               status: betaSelfCheck.reviewExportReadiness.status
             }

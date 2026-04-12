@@ -6,7 +6,8 @@ describe("content guardrail service", () => {
   it("allows calm text", () => {
     expect(
       evaluateContentGuardrail({
-        body: "오늘은 조금 지쳤지만 천천히 쉬어가려고 해요."
+        targetType: "post_body",
+        text: "오늘은 조금 지쳤지만 천천히 적어 보고 있어요."
       })
     ).toMatchObject({
       action: "allow",
@@ -14,49 +15,54 @@ describe("content guardrail service", () => {
     });
   });
 
-  it("flags profanity without blocking", () => {
+  it("returns guidance for harsh tone", () => {
     expect(
       evaluateContentGuardrail({
-        body: "진짜 씨발 너무 속상했어요."
+        targetType: "comment_body",
+        text: "진짜 너무 거칠게 말하고 싶어요!!!!"
       })
     ).toMatchObject({
-      action: "allow_but_flag",
-      reasons: ["profanity"]
+      action: "allow_with_guidance",
+      reasons: expect.arrayContaining(["harsh_tone"])
     });
   });
 
-  it("blocks obvious contact info", () => {
+  it("hard-blocks obvious privacy exposure", () => {
     expect(
       evaluateContentGuardrail({
-        body: "연락 주세요 010-1234-5678 여기로 답할게요."
+        targetType: "feedback_message",
+        text: "010-1234-5678 로 바로 연락 주세요."
       })
     ).toMatchObject({
-      action: "block"
+      action: "hard_block",
+      reasons: expect.arrayContaining(["privacy_exposure"])
     });
   });
 
-  it("flags high risk keywords for review", () => {
+  it("safety-holds crisis wording", () => {
     expect(
       evaluateContentGuardrail({
-        body: "요즘은 그냥 죽고 싶다는 말이 자꾸 떠올라요."
+        targetType: "post_body",
+        text: "그만 사라지고 싶다는 생각이 계속 올라와요."
       })
     ).toMatchObject({
-      action: "allow_but_flag",
-      reasons: expect.arrayContaining(["high_risk_keyword"])
+      action: "safety_hold",
+      reasons: expect.arrayContaining(["crisis_signal"])
     });
   });
-});
 
-it("supports a bounded allowlist for tuning", () => {
-  expect(
-    evaluateContentGuardrail({
-      body: "fuck this flow",
-      allowlist: {
-        profanity: ["fuck"]
-      }
-    })
-  ).toMatchObject({
-    action: "allow",
-    reasons: []
+  it("supports a bounded allowlist for tuning", () => {
+    expect(
+      evaluateContentGuardrail({
+        targetType: "comment_body",
+        text: "시발",
+        allowlist: {
+          explicit_profanity: ["시발"]
+        }
+      })
+    ).toMatchObject({
+      action: "allow",
+      reasons: []
+    });
   });
 });

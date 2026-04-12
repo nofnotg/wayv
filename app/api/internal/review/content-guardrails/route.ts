@@ -41,9 +41,13 @@ export async function GET(request: NextRequest) {
       { key: "targetId", header: "target_id" },
       { key: "userId", header: "user_id" },
       { key: "action", header: "action" },
+      { key: "severity", header: "severity" },
+      { key: "suggestedAction", header: "suggested_action" },
+      { key: "guidanceFamily", header: "guidance_family" },
       { key: "reasons", header: "reasons" },
       { key: "matchedTerms", header: "matched_terms" },
-      { key: "contentExcerpt", header: "content_excerpt" }
+      { key: "contentExcerpt", header: "content_excerpt" },
+      { key: "originalText", header: "original_text" }
     ]);
 
     return new NextResponse(csv, {

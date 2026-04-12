@@ -10,16 +10,27 @@ import { ReactionBar } from "@/features/waves/reaction-bar";
 type WaveDetailProps = {
   post: WaveDetailData;
   isAuthenticated: boolean;
+  submissionNotice?: string | null;
   reactionCatalog: {
     reactionType: WaveReactionType;
     label: string;
   }[];
 };
 
-export function WaveDetail({ post, isAuthenticated, reactionCatalog }: WaveDetailProps) {
+export function WaveDetail({
+  post,
+  isAuthenticated,
+  submissionNotice = null,
+  reactionCatalog
+}: WaveDetailProps) {
   return (
     <div className="grid gap-6">
       <article className="rounded-[2rem] border border-white/70 bg-white/85 p-8 shadow-[0_24px_64px_rgba(15,23,42,0.07)] backdrop-blur">
+        {submissionNotice ? (
+          <div className="mb-5 rounded-[1.5rem] border border-cyan-100 bg-cyan-50 px-5 py-4">
+            <p className="text-sm leading-7 text-cyan-950">{submissionNotice}</p>
+          </div>
+        ) : null}
         {post.moderation.title ? (
           <div className="mb-5 rounded-[1.5rem] border border-amber-100 bg-amber-50 px-5 py-4">
             <p className="text-sm font-medium text-amber-950">{post.moderation.title}</p>

@@ -62,17 +62,25 @@ export async function createComment(
     throw new Error("interactions-paused");
   }
 
-  const guardrail = evaluateContentGuardrail({ body: parsed.data.body });
-  if (guardrail.action === "block") {
+  const guardrail = evaluateContentGuardrail({
+    targetType: "comment_body",
+    text: parsed.data.body,
+    userId
+  });
+  if (guardrail.action === "hard_block") {
     await recordContentGuardrailFlag({
-      targetType: "comment",
+      targetType: guardrail.targetType,
       userId,
-      action: "block",
+      action: guardrail.action,
       reasons: guardrail.reasons,
       matchedTerms: guardrail.matchedTerms,
-      contentExcerpt: guardrail.contentExcerpt
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: parsed.data.body,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
     });
-    throw new Error("content-blocked");
+    throw new Error(JSON.stringify({ error: "content-hard-block", moderation: guardrail }));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -83,7 +91,10 @@ export async function createComment(
       post_id: postId,
       user_id: userId,
       body: parsed.data.body,
-      moderation_status: "active",
+      moderation_status:
+        guardrail.action === "soft_hold" || guardrail.action === "safety_hold"
+          ? "under_review"
+          : "active",
       created_at: now,
       updated_at: now
     })
@@ -94,15 +105,19 @@ export async function createComment(
     throw new Error(error?.message ?? "comment-create-failed");
   }
 
-  if (guardrail.action === "allow_but_flag") {
+  if (guardrail.action !== "allow") {
     await recordContentGuardrailFlag({
-      targetType: "comment",
+      targetType: guardrail.targetType,
       targetId: String(data.id),
       userId,
-      action: "allow_but_flag",
+      action: guardrail.action,
       reasons: guardrail.reasons,
       matchedTerms: guardrail.matchedTerms,
-      contentExcerpt: guardrail.contentExcerpt
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText: parsed.data.body,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
     });
   }
 
@@ -120,5 +135,9 @@ export async function createComment(
   await refreshWaveSnapshot(postId);
   revalidatePath("/");
   revalidatePath(`/wave/${postId}`);
-  return listCommentsForPost(postId, userId);
+  const comments = await listCommentsForPost(postId, userId);
+  return {
+    comments,
+    moderation: guardrail
+  };
 }

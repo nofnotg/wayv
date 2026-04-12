@@ -22,7 +22,9 @@ export default async function WritePage({ searchParams }: WritePageProps) {
       <SectionCard>
         {error ? (
           <p className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            본문은 20자 이상으로 남겨 주세요.
+            {error === "content-hard-block"
+              ? "파도지기가 지금은 이 글을 받을 수 없다고 판단했어요. 연락처 노출이나 강한 공격 표현 없이 다시 남겨 주세요."
+              : "본문은 20자 이상으로 남겨 주세요."}
           </p>
         ) : null}
         <WriteForm />

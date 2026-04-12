@@ -99,13 +99,17 @@ describe("internal review export routes", () => {
     listContentGuardrailFlags.mockResolvedValue([
       {
         id: "flag-1",
-        targetType: "post",
-        targetId: "post-1",
+        targetType: "feedback_message",
+        targetId: "feedback-1",
         userId: "user-1",
-        action: "block",
-        reasons: ["contact_info"],
-        matchedTerms: ["contact-pattern"],
+        action: "hard_block",
+        severity: "high",
+        suggestedAction: "hard_block",
+        guidanceFamily: "privacy_exposure",
+        reasons: ["privacy_exposure"],
+        matchedTerms: ["phone-pattern"],
         contentExcerpt: "010-1234-5678",
+        originalText: "010-1234-5678",
         createdAt: "2025-01-01T00:00:00.000Z"
       }
     ]);
@@ -113,7 +117,7 @@ describe("internal review export routes", () => {
 
     const response = await GET(
       new Request(
-        "http://localhost/api/internal/review/content-guardrails?limit=20&action=block&targetType=post&reason=contact_info"
+        "http://localhost/api/internal/review/content-guardrails?limit=20&action=hard_block&targetType=feedback_message&reason=privacy_exposure"
       ) as never
     );
 
@@ -121,9 +125,9 @@ describe("internal review export routes", () => {
       limit: 20,
       dateFrom: null,
       dateTo: null,
-      action: "block",
-      targetType: "post",
-      reason: "contact_info",
+      action: "hard_block",
+      targetType: "feedback_message",
+      reason: "privacy_exposure",
       format: "json"
     });
     expect(response.status).toBe(200);

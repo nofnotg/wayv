@@ -33,10 +33,18 @@ export async function POST(request: NextRequest, { params }: CommentRouteProps) 
   const body = await request.json();
 
   try {
-    const comments = await createComment(body, id, approvedViewer.userId);
-    return NextResponse.json({ comments });
+    const result = await createComment(body, id, approvedViewer.userId);
+    return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid-comment";
+    try {
+      const parsed = JSON.parse(message) as { error?: string; moderation?: unknown };
+      if (parsed.error) {
+        return NextResponse.json(parsed, { status: 400 });
+      }
+    } catch {
+      // ignore malformed non-JSON errors
+    }
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -111,7 +111,7 @@ export const systemCopy = {
     submit: "짧은 말 남기기",
     saving: "마음을 남기는 중이에요...",
     signInPrompt: "짧은 말을 남기려면 먼저 로그인해 주세요.",
-    invalid: "짧은 말은 2자 이상 500자 이하로 남겨 주세요.",
+    invalid: "짧은 말은 2자 이상 220자 이하로 남겨 주세요.",
     saveError: "마음을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요."
   },
   reporting: {

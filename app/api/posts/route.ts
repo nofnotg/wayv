@@ -19,6 +19,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid-post";
+    try {
+      const parsed = JSON.parse(message) as { error?: string; moderation?: unknown };
+      if (parsed.error) {
+        return NextResponse.json(parsed, { status: 400 });
+      }
+    } catch {
+      // ignore malformed non-JSON errors
+    }
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

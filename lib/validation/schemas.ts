@@ -5,6 +5,7 @@ import {
   betaFeedbackCategoryValues,
   contentGuardrailActionValues,
   contentGuardrailReasonValues,
+  contentGuardrailTargetTypeValues,
   emotionTagValues,
   moderationStatusValues,
   moderationReportReasonValues,
@@ -92,7 +93,7 @@ export const reactionMutationSchema = z.object({
 });
 
 export const commentSchema = z.object({
-  body: z.string().trim().min(2).max(500)
+  body: z.string().trim().min(2).max(220)
 });
 
 export const feedbackSubmissionSchema = z.object({
@@ -194,8 +195,11 @@ export const contentGuardrailReviewQuerySchema = z.object({
   limit: z.number().int().min(1).max(200).default(50),
   dateFrom: reviewDateSchema.nullable().optional(),
   dateTo: reviewDateSchema.nullable().optional(),
-  action: z.enum(["block", "allow_but_flag"]).nullable().optional(),
-  targetType: z.enum(["post", "comment"]).nullable().optional(),
+  action: z
+    .enum(["allow_with_guidance", "soft_hold", "safety_hold", "hard_block"])
+    .nullable()
+    .optional(),
+  targetType: z.enum(contentGuardrailTargetTypeValues).nullable().optional(),
   reason: z.enum(contentGuardrailReasonValues).nullable().optional(),
   format: reviewExportFormatSchema
 });

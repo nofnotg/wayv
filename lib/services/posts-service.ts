@@ -11,6 +11,7 @@ import { wavePostSchema } from "@/lib/validation/schemas";
 import { listCommentsForPost } from "@/lib/services/comment-service";
 import {
   evaluateContentGuardrail,
+  pickHighestPriorityGuardrailResult,
   recordContentGuardrailFlag
 } from "@/lib/services/content-guardrail-service";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
@@ -32,17 +33,38 @@ export async function createWavePostEntry(
     throw new Error("invalid-post");
   }
 
-  const guardrail = evaluateContentGuardrail({ body: parsed.data.body });
-  if (guardrail.action === "block") {
+  const guardrailResults = [
+    parsed.data.title
+      ? evaluateContentGuardrail({
+          targetType: "post_title",
+          text: parsed.data.title,
+          userId
+        })
+      : null,
+    evaluateContentGuardrail({
+      targetType: "post_body",
+      text: parsed.data.body,
+      userId
+    })
+  ].filter((result): result is NonNullable<typeof result> => Boolean(result));
+
+  const guardrail = pickHighestPriorityGuardrailResult(guardrailResults);
+
+  if (guardrail && guardrail.action === "hard_block") {
     await recordContentGuardrailFlag({
-      targetType: "post",
+      targetType: guardrail.targetType,
       userId,
-      action: "block",
+      action: guardrail.action,
       reasons: guardrail.reasons,
       matchedTerms: guardrail.matchedTerms,
-      contentExcerpt: guardrail.contentExcerpt
+      contentExcerpt: guardrail.contentExcerpt,
+      originalText:
+        guardrail.targetType === "post_title" ? parsed.data.title ?? null : parsed.data.body,
+      severity: guardrail.severity,
+      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
+      guidanceFamily: guardrail.guidance?.family ?? null
     });
-    throw new Error("content-blocked");
+    throw new Error(JSON.stringify({ error: "content-hard-block", moderation: guardrail }));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -54,7 +76,10 @@ export async function createWavePostEntry(
       title: parsed.data.title,
       body: parsed.data.body,
       visibility_scope: parsed.data.visibility,
-      moderation_status: "active",
+      moderation_status:
+        guardrail && (guardrail.action === "soft_hold" || guardrail.action === "safety_hold")
+          ? "under_review"
+          : "active",
       created_at: now,
       updated_at: now
     })
@@ -95,15 +120,23 @@ export async function createWavePostEntry(
     { onConflict: "post_id" }
   );
 
-  if (guardrail.action === "allow_but_flag") {
+  for (const result of guardrailResults) {
+    if (result.action === "allow") {
+      continue;
+    }
+
     await recordContentGuardrailFlag({
-      targetType: "post",
+      targetType: result.targetType,
       targetId: String(data.id),
       userId,
-      action: "allow_but_flag",
-      reasons: guardrail.reasons,
-      matchedTerms: guardrail.matchedTerms,
-      contentExcerpt: guardrail.contentExcerpt
+      action: result.action,
+      reasons: result.reasons,
+      matchedTerms: result.matchedTerms,
+      contentExcerpt: result.contentExcerpt,
+      originalText: result.targetType === "post_title" ? parsed.data.title ?? null : parsed.data.body,
+      severity: result.severity,
+      suggestedAction: result.suggestedAction ?? result.action,
+      guidanceFamily: result.guidance?.family ?? null
     });
   }
 
@@ -121,7 +154,11 @@ export async function createWavePostEntry(
   });
 
   revalidatePath("/");
-  return { ok: true as const, id: String(data.id) };
+  return {
+    ok: true as const,
+    id: String(data.id),
+    moderation: guardrail ?? null
+  };
 }
 
 export async function createWavePostAction(formData: FormData) {
@@ -143,8 +180,27 @@ export async function createWavePostAction(formData: FormData) {
       viewer.userId
     );
 
+    if (result.moderation?.action === "allow_with_guidance") {
+      redirect(`/wave/${result.id}?guidance=wave-keeper`);
+    }
+
+    if (result.moderation?.action === "soft_hold" || result.moderation?.action === "safety_hold") {
+      redirect(`/wave/${result.id}?held=${result.moderation.action}`);
+    }
+
     redirect(`/wave/${result.id}`);
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid-post";
+
+    try {
+      const parsed = JSON.parse(message) as { error?: string };
+      if (parsed.error === "content-hard-block") {
+        redirect("/write?error=content-hard-block");
+      }
+    } catch {
+      // ignore malformed non-JSON errors
+    }
+
     redirect("/write?error=invalid-post");
   }
 }

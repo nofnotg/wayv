@@ -108,18 +108,51 @@ export const productEventKeyValues = [
 ] as const;
 export type ProductEventKey = (typeof productEventKeyValues)[number];
 
-export const contentGuardrailActionValues = ["allow", "block", "allow_but_flag"] as const;
+export const contentGuardrailActionValues = [
+  "allow",
+  "allow_with_guidance",
+  "soft_hold",
+  "safety_hold",
+  "hard_block"
+] as const;
 export type ContentGuardrailAction = (typeof contentGuardrailActionValues)[number];
 
 export const contentGuardrailReasonValues = [
-  "profanity",
-  "contact_info",
-  "spam_link",
-  "repeated_characters",
-  "repeated_tokens",
-  "high_risk_keyword"
+  "privacy_exposure",
+  "spam_or_external_pull",
+  "explicit_profanity",
+  "ridicule_or_mockery",
+  "blame_or_attack",
+  "unsolicited_advice",
+  "harsh_tone",
+  "crisis_signal",
+  "evasion_pattern"
 ] as const;
 export type ContentGuardrailReason = (typeof contentGuardrailReasonValues)[number];
+
+export const contentGuardrailTargetTypeValues = [
+  "post_title",
+  "post_body",
+  "comment_body",
+  "beta_application_note",
+  "profile_bio",
+  "feedback_message"
+] as const;
+export type ContentGuardrailTargetType = (typeof contentGuardrailTargetTypeValues)[number];
+
+export const contentGuardrailSeverityValues = ["low", "medium", "high", "critical"] as const;
+export type ContentGuardrailSeverity = (typeof contentGuardrailSeverityValues)[number];
+
+export const contentGuardrailGuidanceFamilyValues = [
+  "advice_or_preaching",
+  "ridicule_or_mockery",
+  "blame_or_attack",
+  "profanity_or_harsh_tone",
+  "privacy_exposure",
+  "crisis_signal"
+] as const;
+export type ContentGuardrailGuidanceFamily =
+  (typeof contentGuardrailGuidanceFamilyValues)[number];
 
 export const seedAuthorTypeValues = ["operator", "community_manager", "system"] as const;
 export type SeedAuthorType = (typeof seedAuthorTypeValues)[number];
@@ -429,21 +462,36 @@ export type ProductEventLog = {
 };
 
 export type ContentGuardrailResult = {
+  targetType: ContentGuardrailTargetType;
   action: ContentGuardrailAction;
+  severity: ContentGuardrailSeverity;
   reasons: ContentGuardrailReason[];
   matchedTerms: string[];
   contentExcerpt: string | null;
+  suggestedAction: Exclude<ContentGuardrailAction, "allow"> | null;
+  guidance: ContentGuardrailGuidance | null;
+};
+
+export type ContentGuardrailGuidance = {
+  persona: "wave_keeper";
+  family: ContentGuardrailGuidanceFamily;
+  title: string;
+  description: string;
 };
 
 export type ContentGuardrailFlag = {
   id: string;
-  targetType: "post" | "comment";
+  targetType: ContentGuardrailTargetType;
   targetId: string | null;
   userId: string | null;
-  action: Extract<ContentGuardrailAction, "block" | "allow_but_flag">;
+  action: Exclude<ContentGuardrailAction, "allow"> | "block" | "allow_but_flag";
   reasons: ContentGuardrailReason[];
   matchedTerms: string[];
   contentExcerpt: string | null;
+  originalText: string | null;
+  severity: ContentGuardrailSeverity;
+  suggestedAction: Exclude<ContentGuardrailAction, "allow">;
+  guidanceFamily: ContentGuardrailGuidanceFamily | null;
   createdAt: string;
 };
 

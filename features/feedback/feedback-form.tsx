@@ -8,8 +8,17 @@ const feedbackCategories = [
   { key: "confusing", label: "헷갈림" },
   { key: "suggestion", label: "제안" },
   { key: "emotional_discomfort", label: "정서적 불편" },
-  { key: "exit_reason", label: "나가고 싶은 이유" }
+  { key: "exit_reason", label: "그만두고 싶은 이유" }
 ] as const;
+
+type FeedbackResponse = {
+  error?: string;
+  moderation?: {
+    guidance?: {
+      description?: string;
+    };
+  };
+};
 
 export function FeedbackForm() {
   const pathname = usePathname();
@@ -35,19 +44,23 @@ export function FeedbackForm() {
         })
       });
 
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as FeedbackResponse | null;
       if (!response.ok) {
         setStatusMessage(
-          data?.error === "invalid-feedback"
-            ? "내용을 조금 더 구체적으로 적어 주세요."
-            : "지금은 피드백을 남기지 못했어요. 잠시 후 다시 시도해 주세요."
+          data?.moderation?.guidance?.description ??
+            (data?.error === "invalid-feedback"
+              ? "조금 더 구체적으로 남겨 주세요."
+              : "지금은 피드백을 남기지 못했어요. 잠시 뒤에 다시 시도해 주세요.")
         );
         return;
       }
 
       setMessage("");
       setContactEmail("");
-      setStatusMessage("고맙습니다. 조용히 검토해서 다음 개선에 반영할게요.");
+      setStatusMessage(
+        data?.moderation?.guidance?.description ??
+          "고맙습니다. 조용히 검토해서 다음 개선에 반영할게요."
+      );
     });
   };
 
@@ -73,7 +86,7 @@ export function FeedbackForm() {
         <textarea
           value={message}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="어떤 점이 불편했는지, 어디에서 멈칫했는지 편하게 적어 주세요."
+          placeholder="어디가 불편했는지, 어디에서 멈췄는지 편하게 적어 주세요."
           className="min-h-40 rounded-[1.5rem] border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400"
         />
         <input
@@ -85,7 +98,7 @@ export function FeedbackForm() {
         />
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs leading-6 text-slate-500">
-            로그인하지 않아도 남길 수 있고, 남긴 이유가 바로 공개되지는 않습니다.
+            로그인한 상태에서만 남길 수 있고, 내용이 바로 공개되지는 않아요.
           </p>
           <button
             type="button"

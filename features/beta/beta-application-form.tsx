@@ -1,13 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-
 import { useRouter } from "next/navigation";
 
 type BetaApplicationFormProps = {
   initialEmail?: string;
   initialName?: string;
   currentStatus?: "pending" | "approved" | "rejected" | "revoked" | null;
+};
+
+type BetaApplyResponse = {
+  access?: { status: string };
+  error?: string;
+  moderation?: {
+    guidance?: {
+      description?: string;
+    };
+  };
 };
 
 export function BetaApplicationForm({
@@ -25,12 +34,12 @@ export function BetaApplicationForm({
 
   const helperCopy =
     currentStatus === "approved"
-      ? "이미 승인된 계정이에요. 메모를 다시 남기면 운영자가 현재 상태를 함께 확인할 수 있어요."
+      ? "이미 승인된 계정이에요. 메모를 다시 남기면 운영 쪽에서 현재 상태를 한 번 더 확인할 수 있어요."
       : currentStatus === "rejected"
-        ? "이번에는 보류되었지만, 메모를 보완해서 다시 신청할 수 있어요."
+        ? "이번에는 보류되었지만 메모를 보완해서 다시 요청할 수 있어요."
         : currentStatus === "revoked"
-          ? "현재 접근은 멈춘 상태예요. 운영 확인이 필요하면 메모를 남겨 주세요."
-          : "왜 wayv를 써 보고 싶은지, 지금 어떤 상황인지 짧게 남겨 주세요.";
+          ? "지금은 접근이 멈춘 상태예요. 운영 확인이 필요하다면 메모를 다시 남겨 주세요."
+          : "왜 wayv를 써 보고 싶은지, 지금 어떤 상황인지 차분하게 남겨 주세요.";
 
   const submit = () => {
     startTransition(async () => {
@@ -49,20 +58,22 @@ export function BetaApplicationForm({
         })
       });
 
-      const data = (await response.json().catch(() => null)) as
-        | { access?: { status: string }; error?: string }
-        | null;
+      const data = (await response.json().catch(() => null)) as BetaApplyResponse | null;
 
       if (!response.ok) {
-        setError("신청 내용을 다시 확인해 주세요. 메모는 8자 이상으로 남겨야 해요.");
+        setError(
+          data?.moderation?.guidance?.description ??
+            "요청 내용을 다시 확인해 주세요. 메모는 8자 이상으로 남겨야 해요."
+        );
         return;
       }
 
       const nextStatus = data?.access?.status;
       setMessage(
-        nextStatus === "approved"
-          ? "이미 승인된 계정으로 확인되었어요. 바로 홈으로 돌아가서 이용할 수 있어요."
-          : "신청이 접수되었어요. 승인 전까지는 대기 화면만 보이게 돼요."
+        data?.moderation?.guidance?.description ??
+          (nextStatus === "approved"
+            ? "이미 승인된 계정으로 확인되었어요. 바로 이어서 사용할 수 있어요."
+            : "요청을 접수했어요. 승인 전까지는 대기 화면만 보여요.")
       );
       setApplicationNote("");
       router.refresh();
@@ -104,7 +115,7 @@ export function BetaApplicationForm({
 
       <div className="grid gap-2">
         <label className="text-sm font-medium text-slate-900" htmlFor="beta-note">
-          신청 메모
+          요청 메모
         </label>
         <textarea
           id="beta-note"
@@ -135,7 +146,7 @@ export function BetaApplicationForm({
           disabled={pending}
           className="rounded-full bg-slate-900 px-5 py-3 text-sm text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {pending ? "신청 보내는 중..." : "베타 신청 보내기"}
+          {pending ? "요청 보내는 중..." : "베타 요청 보내기"}
         </button>
       </div>
     </div>

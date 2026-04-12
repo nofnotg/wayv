@@ -25,6 +25,7 @@ export function CommentsPanel({
   const [comments, setComments] = useState(initialComments);
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const submitComment = () => {
@@ -44,9 +45,13 @@ export function CommentsPanel({
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
+        if (data?.moderation?.guidance?.description) {
+          setError(data.moderation.guidance.description);
+          return;
+        }
         setError(
           data?.error === "invalid-comment"
-            ? systemCopy.comments.invalid
+            ? "짧은 말은 2자 이상 220자 이하로 남겨 주세요."
             : data?.error === "interactions-paused"
               ? systemCopy.moderation.interactionsPaused
               : systemCopy.comments.saveError
@@ -58,6 +63,7 @@ export function CommentsPanel({
       setComments(data.comments);
       setBody("");
       setError(null);
+      setNotice(data?.moderation?.guidance?.description ?? null);
       router.refresh();
     });
   };
@@ -110,10 +116,16 @@ export function CommentsPanel({
               rows={4}
               value={body}
               onChange={(event) => setBody(event.target.value)}
+              maxLength={220}
               placeholder={systemCopy.comments.placeholder}
               className="w-full rounded-[1.5rem] border border-slate-200 bg-white px-4 py-3 text-sm"
             />
+            <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+              <span>짧고 조용한 말만 남길 수 있어요.</span>
+              <span>{body.length}/220</span>
+            </div>
             {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+            {notice ? <p className="text-sm text-amber-700">{notice}</p> : null}
             <button
               type="button"
               onClick={submitComment}

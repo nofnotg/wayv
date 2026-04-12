@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return guard;
     }
     const approvedViewer = viewer!;
-    const feedback = await submitBetaFeedback(
+    const result = await submitBetaFeedback(
       payload as {
         category: "bug" | "confusing" | "suggestion" | "emotional_discomfort" | "exit_reason";
         message: string;
@@ -27,9 +27,20 @@ export async function POST(request: NextRequest) {
       approvedViewer.userId
     );
 
-    return NextResponse.json({ feedback }, { status: 201 });
+    return NextResponse.json(
+      { feedback: result.feedback, moderation: result.moderation ?? null },
+      { status: 201 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "feedback-submit-failed";
+    try {
+      const parsed = JSON.parse(message) as { error?: string; moderation?: unknown };
+      if (parsed.error) {
+        return NextResponse.json(parsed, { status: 400 });
+      }
+    } catch {
+      // ignore malformed non-JSON errors
+    }
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

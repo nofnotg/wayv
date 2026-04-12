@@ -53,7 +53,7 @@ type OperatorConsoleProps = {
   initialProductEventSummary: Array<{ eventKey: ProductEventKey; count: number }>;
   initialGuardrailFlags: ContentGuardrailFlag[];
   initialGuardrailSummary: {
-    byAction: Array<{ action: Extract<ContentGuardrailAction, "block" | "allow_but_flag">; count: number }>;
+    byAction: Array<{ action: string; count: number }>;
     byReason: Array<{ reason: ContentGuardrailReason; count: number }>;
   };
   initialSeedContentStatus: {
@@ -183,7 +183,7 @@ function getProductEventLabel(eventKey: ProductEventKey) {
   }
 }
 
-function getGuardrailReasonLabel(reason: ContentGuardrailReason) {
+function getGuardrailReasonLabel(reason: string) {
   switch (reason) {
     case "profanity":
       return "욕설";
@@ -202,6 +202,78 @@ function getGuardrailReasonLabel(reason: ContentGuardrailReason) {
 
 async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
+}
+
+function renderPhase0GuardrailReason(reason: ContentGuardrailReason) {
+  switch (reason) {
+    case "privacy_exposure":
+      return "개인정보 노출";
+    case "spam_or_external_pull":
+      return "외부 유도";
+    case "explicit_profanity":
+      return "직설적 욕설";
+    case "ridicule_or_mockery":
+      return "조롱·비웃음";
+    case "blame_or_attack":
+      return "비난·공격";
+    case "unsolicited_advice":
+      return "원치 않는 조언";
+    case "harsh_tone":
+      return "거친 어조";
+    case "crisis_signal":
+      return "위기 신호";
+    case "evasion_pattern":
+      return "회피 패턴";
+  }
+}
+
+function renderPhase0GuardrailAction(action: string) {
+  switch (action) {
+    case "allow_with_guidance":
+      return "안내와 함께 통과";
+    case "soft_hold":
+      return "운영 검토 보류";
+    case "safety_hold":
+      return "안전 검토 보류";
+    case "hard_block":
+      return "즉시 차단";
+    case "block":
+      return "즉시 차단";
+    case "allow_but_flag":
+      return "안내와 함께 통과";
+    default:
+      return action;
+  }
+}
+
+function renderPhase0GuardrailSeverity(severity: ContentGuardrailFlag["severity"]) {
+  switch (severity) {
+    case "low":
+      return "낮음";
+    case "medium":
+      return "보통";
+    case "high":
+      return "높음";
+    case "critical":
+      return "긴급";
+  }
+}
+
+function renderPhase0GuardrailTarget(targetType: ContentGuardrailFlag["targetType"]) {
+  switch (targetType) {
+    case "post_title":
+      return "파도 제목";
+    case "post_body":
+      return "파도 본문";
+    case "comment_body":
+      return "댓글";
+    case "beta_application_note":
+      return "베타 신청 메모";
+    case "profile_bio":
+      return "프로필 소개";
+    case "feedback_message":
+      return "피드백 메시지";
+  }
 }
 
 export function OperatorConsole({
@@ -758,6 +830,69 @@ export function OperatorConsole({
             </div>
           </article>
         </div>
+      </SectionCard>
+
+      <SectionCard title="Phase 0 가드레일 검토 큐">
+        <div className="mb-4 flex flex-wrap gap-2 text-sm text-slate-600">
+          <a
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900"
+            href="/api/internal/review/content-guardrails?format=json&limit=100"
+            target="_blank"
+            rel="noreferrer"
+          >
+            가드레일 JSON 열기
+          </a>
+          <a
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900"
+            href="/api/internal/review/content-guardrails?format=csv&limit=200"
+            target="_blank"
+            rel="noreferrer"
+          >
+            가드레일 CSV 내보내기
+          </a>
+        </div>
+
+        {!guardrailFlags.length ? (
+          <p className="text-sm leading-7 text-slate-600">아직 검토할 가드레일 항목이 없어요.</p>
+        ) : (
+          <div className="grid gap-3">
+            {guardrailFlags.slice(0, 8).map((item) => (
+              <article
+                key={`phase0-guardrail-${item.id}`}
+                className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusChip label={renderPhase0GuardrailTarget(item.targetType)} tone="quiet" />
+                  <StatusChip label={renderPhase0GuardrailAction(item.action)} tone="quiet" />
+                  <StatusChip label={renderPhase0GuardrailSeverity(item.severity)} tone="quiet" />
+                  <span className="text-xs text-slate-500">{formatDateTime(item.createdAt)}</span>
+                </div>
+                <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                  <p>
+                    <span className="font-medium text-slate-900">원문</span>{" "}
+                    {item.originalText ?? item.contentExcerpt ?? "없음"}
+                  </p>
+                  <p>
+                    <span className="font-medium text-slate-900">사유 계열</span>{" "}
+                    {item.reasons.map(renderPhase0GuardrailReason).join(", ")}
+                  </p>
+                  <p>
+                    <span className="font-medium text-slate-900">매칭 용어</span>{" "}
+                    {item.matchedTerms.length ? item.matchedTerms.join(", ") : "없음"}
+                  </p>
+                  <p>
+                    <span className="font-medium text-slate-900">제안 동작</span>{" "}
+                    {renderPhase0GuardrailAction(item.suggestedAction)}
+                  </p>
+                  <p>
+                    <span className="font-medium text-slate-900">사용자 식별자</span>{" "}
+                    {item.userId ?? "없음"}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard title={systemCopy.operator.reportsTitle}>
