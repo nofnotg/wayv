@@ -131,5 +131,58 @@ describe("internal review export routes", () => {
       format: "json"
     });
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      flags: [
+        {
+          id: "flag-1",
+          action: "hard_block",
+          severity: "high",
+          suggestedAction: "hard_block",
+          guidanceFamily: "privacy_exposure",
+          matchedTerms: ["phone-pattern"],
+          reasons: ["privacy_exposure"]
+        }
+      ],
+      filters: {
+        action: "hard_block",
+        targetType: "feedback_message",
+        reason: "privacy_exposure",
+        format: "json"
+      }
+    });
+  });
+
+  it("exports canonical matched terms and suggested action in guardrail csv", async () => {
+    getInternalRequestContext.mockResolvedValue({ authorized: true, actorLabel: "operator" });
+    listContentGuardrailFlags.mockResolvedValue([
+      {
+        id: "flag-evade-1",
+        targetType: "comment_body",
+        targetId: "comment-1",
+        userId: "user-2",
+        action: "hard_block",
+        severity: "high",
+        suggestedAction: "hard_block",
+        guidanceFamily: "profanity_or_harsh_tone",
+        reasons: ["explicit_profanity", "evasion_pattern"],
+        matchedTerms: ["씨발", "tlqkf"],
+        contentExcerpt: "tlqkf 같은 말이 튀어나왔어요.",
+        originalText: "tlqkf 같은 말이 튀어나왔어요.",
+        createdAt: "2025-01-02T00:00:00.000Z"
+      }
+    ]);
+    const { GET } = await import("../../app/api/internal/review/content-guardrails/route");
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/internal/review/content-guardrails?limit=5&action=hard_block&format=csv"
+      ) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/csv");
+    const csv = await response.text();
+    expect(csv).toContain("씨발");
+    expect(csv).toContain("hard_block");
   });
 });
