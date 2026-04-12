@@ -26,6 +26,12 @@ type DetectedReason = {
   matchedTerm: string;
 };
 
+type DetectionVariants = {
+  lowered: string;
+  compacted: string;
+  latinizedCompacted: string;
+};
+
 function unique(values: string[]) {
   return [...new Set(values)];
 }
@@ -41,22 +47,72 @@ function compactText(input: string) {
     .replace(/[\s\-_.,!?/\\()[\]{}<>|"'`~@#$%^&*+=:;]+/g, "");
 }
 
+function latinizeObviousEvasion(input: string) {
+  return compactText(input).replace(/[0134578@$!|]/g, (char) => {
+    switch (char) {
+      case "0":
+        return "o";
+      case "1":
+      case "!":
+      case "|":
+        return "i";
+      case "3":
+        return "e";
+      case "4":
+      case "@":
+        return "a";
+      case "5":
+      case "$":
+        return "s";
+      case "7":
+        return "t";
+      case "8":
+        return "b";
+      default:
+        return char;
+    }
+  });
+}
+
+function buildDetectionVariants(input: string): DetectionVariants {
+  return {
+    lowered: input.toLowerCase(),
+    compacted: compactText(input),
+    latinizedCompacted: latinizeObviousEvasion(input)
+  };
+}
+
+function compactTerm(term: string) {
+  return compactText(term);
+}
+
 function isAllowlisted(reason: ContentGuardrailReason, term: string, allowlist?: GuardrailAllowlist) {
   const configured = allowlist?.[reason] ?? contentGuardrailDefaultAllowlist[reason] ?? [];
   return configured.some((item) => item.trim().toLowerCase() === term.trim().toLowerCase());
 }
 
 function detectTerms(
-  lowered: string,
+  variants: DetectionVariants,
   reason: ContentGuardrailReason,
   terms: readonly string[],
   allowlist?: GuardrailAllowlist
 ) {
   return terms
-    .filter(
-      (term) =>
-        lowered.includes(term.toLowerCase()) && !isAllowlisted(reason, term, allowlist)
-    )
+    .filter((term) => {
+      if (isAllowlisted(reason, term, allowlist)) {
+        return false;
+      }
+
+      const loweredTerm = term.toLowerCase();
+      const compactedTerm = compactTerm(term);
+      const latinizedTerm = latinizeObviousEvasion(term);
+
+      return (
+        variants.lowered.includes(loweredTerm) ||
+        variants.compacted.includes(compactedTerm) ||
+        variants.latinizedCompacted.includes(latinizedTerm)
+      );
+    })
     .map((term) => ({ reason, matchedTerm: term }));
 }
 
@@ -85,10 +141,15 @@ function detectPrivacyExposure(
 
 function detectExternalPull(
   body: string,
-  lowered: string,
+  variants: DetectionVariants,
   allowlist?: GuardrailAllowlist
 ) {
-  const hits = detectTerms(lowered, "spam_or_external_pull", contentGuardrailExternalPullTerms, allowlist);
+  const hits = detectTerms(
+    variants,
+    "spam_or_external_pull",
+    contentGuardrailExternalPullTerms,
+    allowlist
+  );
 
   if (/https?:\/\/\S+/i.test(body) || /www\.\S+/i.test(body)) {
     const matched = "link-pattern";
@@ -120,22 +181,51 @@ function detectHarshTone(body: string, allowlist?: GuardrailAllowlist) {
   return hits;
 }
 
-function detectEvasionPattern(body: string, compacted: string, allowlist?: GuardrailAllowlist) {
+function detectObfuscatedPattern(
+  body: string,
+  reason: ContentGuardrailReason,
+  label: string,
+  tokens: string[],
+  allowlist?: GuardrailAllowlist
+) {
   const hits: DetectedReason[] = [];
-  const evasiveCompactTerms = ["ㅅㅂ", "ㅄ", "tlqkf", "qudtls"];
+
+  for (const token of tokens) {
+    const chars = token.split("").map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const pattern = new RegExp(chars.join("[\\s._-]*"), "i");
+    if (pattern.test(body) && !isAllowlisted(reason, label, allowlist)) {
+      hits.push({ reason, matchedTerm: label });
+      break;
+    }
+  }
+
+  return hits;
+}
+
+function detectEvasionPattern(
+  body: string,
+  variants: DetectionVariants,
+  allowlist?: GuardrailAllowlist
+) {
+  const hits: DetectedReason[] = [];
+  const evasiveCompactTerms = ["ㅅㅂ", "ㅄ", "tlqkf", "wtf", "zot"];
 
   for (const term of evasiveCompactTerms) {
-    if (compacted.includes(term) && !isAllowlisted("evasion_pattern", term, allowlist)) {
+    if (
+      (variants.compacted.includes(term) || variants.latinizedCompacted.includes(term)) &&
+      !isAllowlisted("evasion_pattern", term, allowlist)
+    ) {
       hits.push({ reason: "evasion_pattern", matchedTerm: term });
     }
   }
 
-  if (/([ㄱ-ㅎㅏ-ㅣa-z0-9])[\s._-]*([ㄱ-ㅎㅏ-ㅣa-z0-9])[\s._-]*([ㄱ-ㅎㅏ-ㅣa-z0-9]){1,}/i.test(body)) {
-    const matched = "spaced-obfuscation";
-    if (!isAllowlisted("evasion_pattern", matched, allowlist)) {
-      hits.push({ reason: "evasion_pattern", matchedTerm: matched });
-    }
-  }
+  hits.push(
+    ...detectObfuscatedPattern(body, "evasion_pattern", "spaced-sb", ["ㅅㅂ"], allowlist),
+    ...detectObfuscatedPattern(body, "evasion_pattern", "spaced-tlqkf", ["t", "l", "q", "k", "f"], allowlist),
+    ...detectObfuscatedPattern(body, "evasion_pattern", "spaced-fuck", ["f", "u", "c", "k"], allowlist),
+    ...detectObfuscatedPattern(body, "evasion_pattern", "spaced-suicide", ["s", "u", "i", "c", "i", "d", "e"], allowlist),
+    ...detectObfuscatedPattern(body, "evasion_pattern", "spaced-js", ["ㅈㅅ"], allowlist)
+  );
 
   return hits;
 }
@@ -175,12 +265,10 @@ function getActionRank(action: ContentGuardrailAction) {
 
 function resolveAction(
   reasons: ContentGuardrailReason[],
-  targetType: ContentGuardrailTargetType
+  _targetType: ContentGuardrailTargetType
 ): Exclude<ContentGuardrailAction, "allow"> | null {
   if (reasons.includes("crisis_signal")) {
-    return targetType === "comment_body" || targetType === "post_body"
-      ? "safety_hold"
-      : "safety_hold";
+    return "safety_hold";
   }
 
   if (
@@ -192,17 +280,7 @@ function resolveAction(
   }
 
   if (
-    targetType === "comment_body" &&
-    (reasons.includes("explicit_profanity") ||
-      reasons.includes("ridicule_or_mockery") ||
-      reasons.includes("blame_or_attack"))
-  ) {
-    return "soft_hold";
-  }
-
-  if (
-    targetType === "post_body" &&
-    reasons.includes("explicit_profanity") &&
+    reasons.includes("ridicule_or_mockery") ||
     reasons.includes("blame_or_attack")
   ) {
     return "soft_hold";
@@ -210,8 +288,6 @@ function resolveAction(
 
   if (
     reasons.includes("unsolicited_advice") ||
-    reasons.includes("ridicule_or_mockery") ||
-    reasons.includes("blame_or_attack") ||
     reasons.includes("explicit_profanity") ||
     reasons.includes("harsh_tone")
   ) {
@@ -236,24 +312,43 @@ export function evaluateContentGuardrail(input: {
   allowlist?: GuardrailAllowlist;
 }): ContentGuardrailResult {
   const text = input.text.trim();
-  const lowered = text.toLowerCase();
-  const compacted = compactText(text);
+  const variants = buildDetectionVariants(text);
 
   const hits: DetectedReason[] = [
     ...detectTerms(
-      lowered,
+      variants,
       "explicit_profanity",
       contentGuardrailExplicitProfanityTerms,
       input.allowlist
     ),
-    ...detectTerms(lowered, "ridicule_or_mockery", contentGuardrailRidiculeTerms, input.allowlist),
-    ...detectTerms(lowered, "blame_or_attack", contentGuardrailBlameTerms, input.allowlist),
-    ...detectTerms(lowered, "unsolicited_advice", contentGuardrailAdviceTerms, input.allowlist),
-    ...detectTerms(lowered, "crisis_signal", contentGuardrailCrisisTerms, input.allowlist),
+    ...detectTerms(
+      variants,
+      "ridicule_or_mockery",
+      contentGuardrailRidiculeTerms,
+      input.allowlist
+    ),
+    ...detectTerms(
+      variants,
+      "blame_or_attack",
+      contentGuardrailBlameTerms,
+      input.allowlist
+    ),
+    ...detectTerms(
+      variants,
+      "unsolicited_advice",
+      contentGuardrailAdviceTerms,
+      input.allowlist
+    ),
+    ...detectTerms(
+      variants,
+      "crisis_signal",
+      contentGuardrailCrisisTerms,
+      input.allowlist
+    ),
     ...detectPrivacyExposure(text, input.allowlist),
-    ...detectExternalPull(text, lowered, input.allowlist),
+    ...detectExternalPull(text, variants, input.allowlist),
     ...detectHarshTone(text, input.allowlist),
-    ...detectEvasionPattern(text, compacted, input.allowlist)
+    ...detectEvasionPattern(text, variants, input.allowlist)
   ];
 
   const reasons = unique(hits.map((hit) => hit.reason)) as ContentGuardrailReason[];

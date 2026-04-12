@@ -3,10 +3,12 @@ import type { ContentGuardrailReason } from "@/lib/domain/types";
 export const contentGuardrailExplicitProfanityTerms = [
   "시발",
   "씨발",
+  "씨팔",
   "병신",
   "개새끼",
   "지랄",
   "fuck",
+  "fucking",
   "bitch"
 ] as const;
 
@@ -32,11 +34,11 @@ export const contentGuardrailAdviceTerms = [
   "정신 차려",
   "버텨",
   "참아",
-  "끊어",
+  "잊어",
   "그만해",
   "해라",
   "해야지",
-  "해야 해"
+  "해야 돼"
 ] as const;
 
 export const contentGuardrailCrisisTerms = [
@@ -45,6 +47,7 @@ export const contentGuardrailCrisisTerms = [
   "사라지고 싶",
   "사라지고싶",
   "자해",
+  "ㅈㅅ",
   "극단적 선택",
   "suicide",
   "self-harm"
@@ -58,7 +61,7 @@ export const contentGuardrailExternalPullTerms = [
   "디엠",
   "텔레그램",
   "인스타",
-  "외부로",
+  "번호로",
   "follow me"
 ] as const;
 
