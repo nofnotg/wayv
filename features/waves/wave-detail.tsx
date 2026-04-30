@@ -1,6 +1,7 @@
 import type {
   ContentGuardrailGuidanceFamily,
   ContentGuardrailReason,
+  PrivateResonanceTrace,
   WaveDetail as WaveDetailData,
   WaveReactionType
 } from "@/lib/domain/types";
@@ -11,6 +12,7 @@ import { formatDateTime } from "@/lib/utils";
 
 import { ReportAction } from "@/features/moderation/report-action";
 import { CommentsPanel } from "@/features/waves/comments-panel";
+import { PrivateResonanceCard } from "@/features/waves/private-resonance-card";
 import { ReactionBar } from "@/features/waves/reaction-bar";
 
 type WaveDetailProps = {
@@ -30,6 +32,7 @@ type WaveDetailProps = {
     reactionType: WaveReactionType;
     label: string;
   }[];
+  privateResonanceTrace?: PrivateResonanceTrace | null;
 };
 
 export function WaveDetail({
@@ -37,7 +40,8 @@ export function WaveDetail({
   isAuthenticated,
   submissionNotice = null,
   moderationFeedback = null,
-  reactionCatalog
+  reactionCatalog,
+  privateResonanceTrace = null
 }: WaveDetailProps) {
   return (
     <div className="grid gap-6">
@@ -109,13 +113,20 @@ export function WaveDetail({
       </article>
 
       {post.moderation.interactionsEnabled ? (
-        <ReactionBar
-          postId={post.id}
-          isAuthenticated={isAuthenticated}
-          initialSummary={post.reactionSummary}
-          initialViewerReactionTypes={post.viewerReactionTypes}
-          catalog={reactionCatalog}
-        />
+        <>
+          <ReactionBar
+            postId={post.id}
+            isAuthenticated={isAuthenticated}
+            initialSummary={post.reactionSummary}
+            initialViewerReactionTypes={post.viewerReactionTypes}
+            catalog={reactionCatalog}
+          />
+          <PrivateResonanceCard
+            postId={post.id}
+            isAuthenticated={isAuthenticated}
+            initialTrace={privateResonanceTrace}
+          />
+        </>
       ) : (
         <section className="rounded-[2rem] border border-white/70 bg-white/85 p-6 shadow-[0_24px_64px_rgba(15,23,42,0.07)] backdrop-blur">
           <p className="text-sm text-slate-600">{systemCopy.moderation.interactionsPaused}</p>

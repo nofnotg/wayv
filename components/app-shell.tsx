@@ -55,6 +55,12 @@ export function AppShell({ children, viewer, notificationSummary }: AppShellProp
                       ) : null}
                     </Link>
                     <Link
+                      href={"/traces" as Route}
+                      className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
+                    >
+                      {systemCopy.navigation.traces}
+                    </Link>
+                    <Link
                       href="/profile"
                       className="rounded-full px-3 py-2 transition hover:bg-slate-900/5"
                     >

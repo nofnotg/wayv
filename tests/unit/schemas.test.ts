@@ -7,6 +7,7 @@ import {
 } from "../../lib/supabase/env";
 import {
   notificationDeviceSchema,
+  privateResonanceTraceSchema,
   signInRequestSchema,
   wavePostSchema
 } from "../../lib/validation/schemas";
@@ -62,5 +63,22 @@ describe("schemas and env helpers", () => {
         visibility: "public"
       }).visibility
     ).toBe("public");
+  });
+
+  it("validates private resonance traces", () => {
+    expect(
+      privateResonanceTraceSchema.parse({
+        resonanceChoice: "lingered",
+        privateNote: "오래 남았어요.",
+        sourcePath: "/wave/post-1"
+      }).resonanceChoice
+    ).toBe("lingered");
+
+    expect(() =>
+      privateResonanceTraceSchema.parse({
+        resonanceChoice: "diagnosis",
+        privateNote: "x".repeat(181)
+      })
+    ).toThrow();
   });
 });

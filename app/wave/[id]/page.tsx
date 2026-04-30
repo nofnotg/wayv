@@ -6,6 +6,7 @@ import type {
 } from "@/lib/domain/types";
 import { WaveDetail } from "@/features/waves/wave-detail";
 import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
+import { getPrivateResonanceTrace } from "@/lib/services/private-resonance-service";
 import { getWaveDetailById } from "@/lib/services/posts-service";
 import { getReactionCatalog } from "@/lib/services/reaction-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
@@ -19,7 +20,16 @@ export default async function WaveDetailPage({ params, searchParams }: WaveDetai
   const { id } = await params;
   const viewer = await getViewerContext();
   const approvedViewer = await enforceApprovedViewerPageAccess({ viewer, nextPath: `/wave/${id}` });
-  const post = await getWaveDetailById(id, approvedViewer.userId);
+  const [post, privateResonanceTrace] = await Promise.all([
+    getWaveDetailById(id, approvedViewer.userId),
+    getPrivateResonanceTrace(id, approvedViewer.userId).catch((error) => {
+      if (error instanceof Error && error.message === "not-found") {
+        return null;
+      }
+
+      throw error;
+    })
+  ]);
   const query = (await searchParams) ?? {};
 
   if (!post) {
@@ -51,6 +61,7 @@ export default async function WaveDetailPage({ params, searchParams }: WaveDetai
       post={post}
       isAuthenticated
       reactionCatalog={getReactionCatalog()}
+      privateResonanceTrace={privateResonanceTrace}
       moderationFeedback={
         action === "allow_with_guidance" || action === "soft_hold" || action === "safety_hold"
           ? {

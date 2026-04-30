@@ -8,6 +8,7 @@ export const systemCopy = {
   navigation: {
     home: "홈",
     write: "파도 쓰기",
+    traces: "내 잔상",
     profile: "프로필",
     settings: "설정",
     inbox: "알림 보관함",
@@ -102,6 +103,30 @@ export const systemCopy = {
     stay_quietly: "조용히 머물게요",
     signInPrompt: "반응을 남기려면 먼저 로그인해 주세요.",
     saved: "이 방식으로 마음을 남겨 두었어요."
+  },
+  privateResonance: {
+    title: "이 파도는 어디쯤 닿았나요?",
+    description: "혼자만 볼 수 있는 잔상으로 남겨둘 수 있어요.",
+    notePlaceholder: "원하면 짧게만 남겨도 괜찮아요.",
+    noteHelp: "작성자나 다른 사람에게 보이지 않아요.",
+    save: "잔상 남기기",
+    saving: "조용히 남기는 중이에요...",
+    saved: "내 잔상에 남겨 두었어요.",
+    cleared: "이 잔상을 비워 두었어요.",
+    clear: "비워 두기",
+    error: "아직 남기지 못했어요. 잠시 뒤 다시 시도해 주세요.",
+    signInPrompt: "잔상을 남기려면 먼저 로그인해 주세요.",
+    listTitle: "내 잔상",
+    listDescription: "나에게 조용히 남은 파도를 최신순으로 모아 두었어요.",
+    empty: "아직 남겨 둔 잔상이 없어요. 어떤 파도는 그냥 지나가도 괜찮아요.",
+    openWave: "파도 다시 보기",
+    choices: {
+      passed_by: "스쳐갔어요",
+      touched_lightly: "조금 닿았어요",
+      lingered: "오래 남았어요",
+      felt_like_mine: "내 이야기 같았어요",
+      not_sure_yet: "아직 모르겠어요"
+    }
   },
   comments: {
     title: "조용히 이어지는 말",

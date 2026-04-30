@@ -14,6 +14,7 @@ import {
   notificationDigestModeValues,
   notificationEventStateValues,
   notificationPlatformValues,
+  privateResonanceChoiceValues,
   profileVisibilityValues,
   productEventKeyValues,
   seedAuthorTypeValues,
@@ -92,6 +93,12 @@ export const wavePostSchema = z.object({
 
 export const reactionMutationSchema = z.object({
   reactionType: z.enum(waveReactionTypeValues)
+});
+
+export const privateResonanceTraceSchema = z.object({
+  resonanceChoice: z.enum(privateResonanceChoiceValues),
+  privateNote: z.string().trim().max(180).nullable().optional(),
+  sourcePath: nextPathSchema.nullable().optional()
 });
 
 export const commentSchema = z.object({

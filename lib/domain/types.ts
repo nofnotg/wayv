@@ -52,6 +52,16 @@ export const waveReactionTypeValues = [
 
 export type WaveReactionType = (typeof waveReactionTypeValues)[number];
 
+export const privateResonanceChoiceValues = [
+  "passed_by",
+  "touched_lightly",
+  "lingered",
+  "felt_like_mine",
+  "not_sure_yet"
+] as const;
+
+export type PrivateResonanceChoice = (typeof privateResonanceChoiceValues)[number];
+
 export const waveStateValues = [
   "calm",
   "spreading",
@@ -400,6 +410,23 @@ export type WaveDetail = WavePost & {
   viewerReactionTypes: WaveReactionType[];
   comments: WaveComment[];
   moderation: ModerationPresentation;
+};
+
+export type PrivateResonanceTrace = {
+  id: string;
+  userId: string;
+  postId: string;
+  resonanceChoice: PrivateResonanceChoice;
+  privateNote: string | null;
+  sourcePath: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PrivateResonanceTraceListItem = PrivateResonanceTrace & {
+  postTitle: string | null;
+  postBodySnippet: string;
+  postVisible: boolean;
 };
 
 export type RestModeSetting = {
