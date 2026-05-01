@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import type { ViewerContext } from "@/lib/services/viewer-service";
 
 export function isApprovedViewer(viewer: ViewerContext | null | undefined) {
-  return viewer?.betaAccess?.status === "approved";
+  return viewer?.betaAccess?.status === "approved" || Boolean(viewer?.operatorAccess);
 }
 
 export function getBetaAccessDeniedPayload(viewer: ViewerContext) {

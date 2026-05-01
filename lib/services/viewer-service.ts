@@ -7,6 +7,7 @@ import type {
   UserProfile
 } from "@/lib/domain/types";
 import { getViewerBetaAccess } from "@/lib/services/beta-access-service";
+import { getOperatorAccess } from "@/lib/services/operator-access-service";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { deriveNickname } from "@/lib/utils";
@@ -16,6 +17,11 @@ export type ViewerContext = {
   email: string;
   profile: UserProfile;
   betaAccess: BetaAccessRequest | null;
+  operatorAccess: {
+    userId: string;
+    role: "operator" | "admin";
+    isActive?: boolean;
+  } | null;
   notificationPreferences: NotificationPreference | null;
   restMode: RestModeSetting | null;
 };
@@ -89,6 +95,7 @@ export const getViewerContext = cache(async (): Promise<ViewerContext | null> =>
     userId: user.id,
     email: user.email
   });
+  const operatorAccess = await getOperatorAccess(user.id);
 
   if (!profile) {
     return null;
@@ -99,6 +106,7 @@ export const getViewerContext = cache(async (): Promise<ViewerContext | null> =>
     email: user.email,
     profile: mapProfileRow(profile),
     betaAccess,
+    operatorAccess,
     notificationPreferences: notificationPreferences
       ? {
           userId: String(notificationPreferences.user_id),

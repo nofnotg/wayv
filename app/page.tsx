@@ -8,12 +8,14 @@ import { SetupBanner } from "@/components/setup-banner";
 import { StatusChip } from "@/components/status-chip";
 import { WaveCard } from "@/features/feed/wave-card";
 import { systemCopy } from "@/lib/copy/system-copy";
+import { isApprovedViewer } from "@/lib/services/beta-access-guard-service";
 import { buildHomeFeed, getLoggedOutHomeCopy } from "@/lib/services/feed-service";
 import { getStoredSeedProfile } from "@/lib/services/onboarding-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 export default async function HomePage() {
   const viewer = await getViewerContext();
+  const canUseProduct = isApprovedViewer(viewer);
 
   if (!viewer) {
     const copy = getLoggedOutHomeCopy();
@@ -32,7 +34,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/auth/sign-in"
-              className="rounded-full bg-slate-900 px-5 py-3 text-sm text-white"
+              className="rounded-full bg-[#17241f] px-5 py-3 text-sm text-[#fffaf0] shadow-[0_14px_30px_rgba(23,36,31,0.18)]"
             >
               {systemCopy.home.startLink}
             </Link>
@@ -45,7 +47,7 @@ export default async function HomePage() {
     );
   }
 
-  if (!viewer.betaAccess) {
+  if (!viewer.betaAccess && !canUseProduct) {
     return (
       <div className="grid gap-6">
         <PageHeader
@@ -74,7 +76,7 @@ export default async function HomePage() {
     );
   }
 
-  if (viewer.betaAccess.status !== "approved") {
+  if (!canUseProduct && viewer.betaAccess) {
     return (
       <div className="grid gap-6">
         <PageHeader
@@ -119,13 +121,13 @@ export default async function HomePage() {
     <div className="grid gap-6">
       <PageHeader
         title={`\uc548\ub155\ud558\uc138\uc694, ${viewer.profile.nickname}`}
-        description="\uc624\ub298\uc740 \uc5b4\ub5a4 \ud750\ub984\uacfc \uc628\ub3c4\uac00 \uba38\ubb3c\uace0 \uc788\ub294\uc9c0 \uc870\uc6a9\ud788 \uc0b4\ud3b4\ubcf4\uace0 \uc788\uc5b4\uc694."
+        description="\uc624\ub298 \ub0a8\uc544 \uc788\ub294 \ud30c\ub3c4\ub4e4\uc744 \uc870\uc6a9\ud788 \ud3bc\uccd0\ub450\uc5c8\uc5b4\uc694. \ube60\ub974\uac8c \ud310\ub2e8\ud558\uc9c0 \uc54a\uace0, \uba3c\uc800 \uc5b4\ub514\uc5d0 \uc2dc\uc120\uc774 \uba38\ubb34\ub294\uc9c0\ub9cc \ubcf4\uc544\ub3c4 \uad1c\ucc2e\uc544\uc694."
       />
 
       {viewer.restMode?.enabled ? (
-        <SectionCard className="border-cyan-100 bg-cyan-50/80">
-          <p className="text-sm font-medium text-cyan-950">{systemCopy.home.restModeBanner}</p>
-          <p className="mt-2 text-sm text-cyan-900">{systemCopy.home.restModeDescription}</p>
+        <SectionCard className="border-[#c8ddd2] bg-[#edf7f1]/82">
+          <p className="text-sm font-medium text-[#23473b]">{systemCopy.home.restModeBanner}</p>
+          <p className="mt-2 text-sm leading-7 text-[#3f675b]">{systemCopy.home.restModeDescription}</p>
         </SectionCard>
       ) : null}
 
@@ -137,13 +139,13 @@ export default async function HomePage() {
           {feed.weather.map((weather) => (
             <div
               key={`${weather.topic}-${weather.state}`}
-              className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4"
+              className="rounded-[1.75rem] border border-[#e4dccd] bg-[#f8f2e8]/72 px-5 py-4"
             >
               <div className="mb-2 flex items-center gap-2">
                 <StatusChip label={systemCopy.waveStates[weather.state]} tone="active" />
-                <span className="text-sm text-slate-500">{weather.topic}</span>
+                <span className="text-sm text-[#7a7569]">{weather.topic}</span>
               </div>
-              <p className="text-sm leading-7 text-slate-700">{weather.copy}</p>
+              <p className="text-sm leading-7 text-[#536156]">{weather.copy}</p>
             </div>
           ))}
         </div>
@@ -157,16 +159,16 @@ export default async function HomePage() {
           {feed.lanes.for_you.length ? (
             feed.lanes.for_you.map((post) => <WaveCard key={post.id} post={post} />)
           ) : feed.meta.forYouSuppressed ? (
-            <div className="rounded-[1.5rem] border border-cyan-100 bg-cyan-50/80 px-5 py-4 md:col-span-2">
-              <p className="text-sm font-medium text-cyan-950">
+            <div className="rounded-[1.75rem] border border-[#c8ddd2] bg-[#edf7f1]/82 px-5 py-4 md:col-span-2">
+              <p className="text-sm font-medium text-[#23473b]">
                 {systemCopy.home.forYouRestingTitle}
               </p>
-              <p className="mt-2 text-sm leading-7 text-cyan-900">
+              <p className="mt-2 text-sm leading-7 text-[#3f675b]">
                 {systemCopy.home.forYouRestingDescription}
               </p>
             </div>
           ) : (
-            <p className="text-sm text-slate-600">{systemCopy.home.emptyForYou}</p>
+            <p className="text-sm text-[#657267]">{systemCopy.home.emptyForYou}</p>
           )}
         </div>
       </SectionCard>
@@ -180,7 +182,7 @@ export default async function HomePage() {
             {feed.lanes.quiet.length ? (
               feed.lanes.quiet.map((post) => <WaveCard key={post.id} post={post} />)
             ) : (
-              <p className="text-sm text-slate-600">{systemCopy.home.emptyQuiet}</p>
+              <p className="text-sm text-[#657267]">{systemCopy.home.emptyQuiet}</p>
             )}
           </div>
         </SectionCard>
@@ -192,7 +194,7 @@ export default async function HomePage() {
             {feed.lanes.rekindled.length ? (
               feed.lanes.rekindled.map((post) => <WaveCard key={post.id} post={post} />)
             ) : (
-              <p className="text-sm text-slate-600">{systemCopy.home.emptyRekindled}</p>
+              <p className="text-sm text-[#657267]">{systemCopy.home.emptyRekindled}</p>
             )}
           </div>
         </SectionCard>
