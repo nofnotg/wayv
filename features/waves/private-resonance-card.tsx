@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { systemCopy } from "@/lib/copy/system-copy";
 import type { PrivateResonanceChoice, PrivateResonanceTrace } from "@/lib/domain/types";
@@ -30,8 +30,9 @@ export function PrivateResonanceCard({
     initialTrace?.resonanceChoice ?? null
   );
   const [privateNote, setPrivateNote] = useState(initialTrace?.privateNote ?? "");
+  const [hasTrace, setHasTrace] = useState(Boolean(initialTrace));
   const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
 
   const saveTrace = () => {
     if (!isAuthenticated) {
@@ -44,30 +45,39 @@ export function PrivateResonanceCard({
       return;
     }
 
-    startTransition(async () => {
+    const submit = async () => {
+      setSubmitting(true);
       setMessage(null);
-      const response = await fetch(`/api/posts/${postId}/private-resonance`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          resonanceChoice: choice,
-          privateNote: privateNote.trim() || null,
-          sourcePath: pathname ?? `/wave/${postId}`
-        })
-      });
 
-      if (!response.ok) {
-        setMessage(systemCopy.privateResonance.error);
-        return;
+      try {
+        const response = await fetch(`/api/posts/${postId}/private-resonance`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            resonanceChoice: choice,
+            privateNote: privateNote.trim() || null,
+            sourcePath: pathname ?? `/wave/${postId}`
+          })
+        });
+
+        if (!response.ok) {
+          setMessage(systemCopy.privateResonance.error);
+          return;
+        }
+
+        const data = (await response.json()) as { trace: PrivateResonanceTrace };
+        setChoice(data.trace.resonanceChoice);
+        setPrivateNote(data.trace.privateNote ?? "");
+        setHasTrace(true);
+        setMessage(systemCopy.privateResonance.saved);
+      } finally {
+        setSubmitting(false);
       }
+    };
 
-      const data = (await response.json()) as { trace: PrivateResonanceTrace };
-      setChoice(data.trace.resonanceChoice);
-      setPrivateNote(data.trace.privateNote ?? "");
-      setMessage(systemCopy.privateResonance.saved);
-    });
+    void submit();
   };
 
   const clearTrace = () => {
@@ -76,21 +86,30 @@ export function PrivateResonanceCard({
       return;
     }
 
-    startTransition(async () => {
+    const submit = async () => {
+      setSubmitting(true);
       setMessage(null);
-      const response = await fetch(`/api/posts/${postId}/private-resonance`, {
-        method: "DELETE"
-      });
 
-      if (!response.ok) {
-        setMessage(systemCopy.privateResonance.error);
-        return;
+      try {
+        const response = await fetch(`/api/posts/${postId}/private-resonance`, {
+          method: "DELETE"
+        });
+
+        if (!response.ok) {
+          setMessage(systemCopy.privateResonance.error);
+          return;
+        }
+
+        setChoice(null);
+        setPrivateNote("");
+        setHasTrace(false);
+        setMessage(systemCopy.privateResonance.cleared);
+      } finally {
+        setSubmitting(false);
       }
+    };
 
-      setChoice(null);
-      setPrivateNote("");
-      setMessage(systemCopy.privateResonance.cleared);
-    });
+    void submit();
   };
 
   return (
@@ -108,14 +127,14 @@ export function PrivateResonanceCard({
             <button
               key={item}
               type="button"
-              disabled={pending}
+              disabled={submitting}
               onClick={() => setChoice(item)}
               className={[
                 "rounded-full border px-4 py-2 text-sm transition",
                 isActive
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-400",
-                pending ? "cursor-not-allowed opacity-70" : ""
+                submitting ? "cursor-not-allowed opacity-70" : ""
               ].join(" ")}
             >
               {systemCopy.privateResonance.choices[item]}
@@ -137,10 +156,10 @@ export function PrivateResonanceCard({
           {systemCopy.privateResonance.noteHelp} {privateNote.length}/180
         </span>
         <div className="flex flex-wrap gap-2">
-          {initialTrace || choice || privateNote ? (
+          {hasTrace || choice || privateNote ? (
             <button
               type="button"
-              disabled={pending}
+              disabled={submitting}
               onClick={clearTrace}
               className="rounded-full border border-slate-200 px-4 py-2 text-xs text-slate-600 transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
             >
@@ -149,11 +168,11 @@ export function PrivateResonanceCard({
           ) : null}
           <button
             type="button"
-            disabled={pending || !choice}
+            disabled={submitting || !choice}
             onClick={saveTrace}
             className="rounded-full bg-slate-900 px-4 py-2 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {pending ? systemCopy.privateResonance.saving : systemCopy.privateResonance.save}
+            {submitting ? systemCopy.privateResonance.saving : systemCopy.privateResonance.save}
           </button>
         </div>
       </div>
