@@ -20,7 +20,10 @@ const sans = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   title: "wayv",
-  description: systemCopy.brand.description
+  description: systemCopy.brand.description,
+  icons: {
+    icon: "/favicon.ico"
+  }
 };
 
 export default async function RootLayout({
