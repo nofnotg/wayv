@@ -5,6 +5,8 @@ import type {
   PublicProfileVisibility
 } from "@/lib/domain/types";
 
+const MAX_ONBOARDING_QUESTIONS = 5;
+
 function visibilityPatch(value: PublicProfileVisibility) {
   return { privacyPreference: value } as const;
 }
@@ -12,191 +14,140 @@ function visibilityPatch(value: PublicProfileVisibility) {
 export const onboardingQuestions: OnboardingQuestion[] = [
   {
     key: "primary_topic",
+    order: 10,
     type: "single_choice",
-    title: "요즘 가장 자주 마음에 걸리는 흐름은 어떤 쪽인가요?",
+    title: "요즘 마음이 자주 머무는 곳은 어디에 가까워요?",
+    titleVariants: [
+      "요즘 어떤 파도가 가장 자주 안쪽을 지나가나요?",
+      "지금의 생활에서 가장 오래 남는 결은 어느 쪽인가요?"
+    ],
+    subtitle: "정확히 설명하지 않아도 괜찮아요. 가장 가까운 쪽만 골라 주세요.",
     options: [
-      { key: "work", label: "일과 커리어", seedPatch: { topics: { work: 3 } } },
-      { key: "money", label: "돈과 생활", seedPatch: { topics: { money: 3 } } },
-      {
-        key: "relationships",
-        label: "관계",
-        seedPatch: { topics: { relationships: 3 } }
-      },
-      { key: "family", label: "가족", seedPatch: { topics: { family: 3 } } },
-      { key: "study", label: "학업과 진로", seedPatch: { topics: { study: 3 } } },
-      { key: "health", label: "건강", seedPatch: { topics: { health: 3 } } },
-      {
-        key: "daily_life",
-        label: "일상 전반",
-        seedPatch: { topics: { daily_life: 2 } }
-      }
+      { key: "work", label: "일과 방향", seedPatch: { topics: { work: 3 } } },
+      { key: "relationships", label: "사람과 거리", seedPatch: { topics: { relationships: 3 } } },
+      { key: "daily_life", label: "하루의 리듬", seedPatch: { topics: { daily_life: 3 } } }
     ]
   },
   {
     key: "emotion_relief",
-    type: "multi_choice",
-    title: "비슷한 이야기를 볼 때 어떤 감정이 먼저 가벼워지면 좋겠나요?",
-    subtitle: "여러 개를 골라도 괜찮아요.",
+    order: 20,
+    type: "single_choice",
+    title: "읽고 난 뒤 조금 가벼워졌으면 하는 감정은 무엇에 가까워요?",
+    titleVariants: [
+      "다른 사람의 파도를 볼 때, 무엇이 조금 덜 혼자였으면 하나요?",
+      "wayv가 조용히 받아주었으면 하는 감정은 어느 쪽인가요?"
+    ],
     options: [
-      { key: "isolation", label: "고립감", seedPatch: { emotions: { isolation: 2 } } },
-      {
-        key: "self_blame",
-        label: "자책감",
-        seedPatch: { emotions: { self_blame: 2 } }
-      },
-      { key: "anxiety", label: "불안감", seedPatch: { emotions: { anxiety: 2 } } },
-      {
-        key: "frustration",
-        label: "답답함",
-        seedPatch: { emotions: { frustration: 2 } }
-      },
-      { key: "grief", label: "상실감", seedPatch: { emotions: { grief: 2 } } },
-      { key: "quiet_hope", label: "조용한 희망", seedPatch: { emotions: { quiet_hope: 1 } } }
+      { key: "isolation", label: "혼자 남은 느낌", seedPatch: { emotions: { isolation: 3 } } },
+      { key: "anxiety", label: "앞이 흔들리는 느낌", seedPatch: { emotions: { anxiety: 3 } } },
+      { key: "frustration", label: "말이 막히는 느낌", seedPatch: { emotions: { frustration: 3 } } }
     ]
   },
   {
     key: "preferred_tone",
+    order: 30,
     type: "single_choice",
-    title: "지금 더 닿았으면 하는 흐름은 어떤 쪽인가요?",
+    title: "처음에는 어떤 온도의 파도가 편할까요?",
+    titleVariants: [
+      "지금 내게 너무 세지 않은 흐름은 어느 쪽일까요?",
+      "처음 만나는 wayv가 어떤 거리였으면 하나요?"
+    ],
     options: [
       {
         key: "quiet",
-        label: "조용한 공감",
+        label: "조용히 곁에 있는 느낌",
         seedPatch: { preferredWaveTone: "quiet", empathyPreference: "quiet" }
       },
       {
         key: "resonant",
-        label: "나도 그랬다는 연결감",
+        label: "내 이야기와 닿는 느낌",
         seedPatch: { preferredWaveTone: "resonant", empathyPreference: "shared" }
       },
       {
         key: "light",
-        label: "조금 가벼운 숨통",
+        label: "가볍게 지나갈 수 있는 느낌",
         seedPatch: { preferredWaveTone: "light", empathyPreference: "gentle_prompt" }
-      },
-      {
-        key: "mixed",
-        label: "길게 머무는 위로",
-        seedPatch: { preferredWaveTone: "mixed", empathyPreference: "gentle_prompt" }
       }
     ]
   },
   {
     key: "privacy_preference",
+    order: 40,
     type: "single_choice",
-    title: "처음에는 어떤 방식이 편한가요?",
+    title: "처음의 나는 어느 정도로 드러나는 게 편할까요?",
+    subtitle: "나중에 언제든 바꿀 수 있어요.",
+    clarifyOnly: true,
+    branchRules: [{ questionKey: "preferred_tone", anyOf: ["quiet", "light"] }],
     options: [
       {
         key: "anonymous",
-        label: "완전 익명으로 둘러볼래요",
+        label: "익명으로 조용히",
         seedPatch: visibilityPatch("anonymous")
       },
       {
         key: "semi_anonymous",
-        label: "반익명으로 가볍게 시작할래요",
+        label: "별명 정도만",
         seedPatch: visibilityPatch("semi_anonymous")
       },
       {
         key: "nickname_visible",
-        label: "닉네임으로 써도 괜찮아요",
+        label: "닉네임은 보여도 괜찮아요",
         seedPatch: visibilityPatch("nickname_visible")
-      },
-      {
-        key: "profile_visible",
-        label: "프로필도 천천히 열어둘래요",
-        seedPatch: visibilityPatch("profile_visible")
       }
-    ]
-  },
-  {
-    key: "exposure_tolerance",
-    type: "single_choice",
-    title: "요즘은 어떤 흐름이 덜 부담스러울까요?",
-    options: [
-      {
-        key: "low",
-        label: "짧고 조용한 이야기",
-        seedPatch: { exposureTolerance: "low", readingPreference: "short" }
-      },
-      {
-        key: "medium",
-        label: "비슷한 경험이 모이는 이야기",
-        seedPatch: { exposureTolerance: "medium", readingPreference: "mixed" }
-      },
-      {
-        key: "high",
-        label: "긴 글도 괜찮아요",
-        seedPatch: { exposureTolerance: "high", readingPreference: "long" }
-      }
-    ]
-  },
-  {
-    key: "notification_tone",
-    type: "single_choice",
-    title: "조용한 알림으로 다시 닿아와도 괜찮을까요?",
-    options: [
-      {
-        key: "off",
-        label: "지금은 알림 없이 둘러볼래요",
-        seedPatch: { notificationTone: "off" }
-      },
-      {
-        key: "quiet",
-        label: "가끔만 잔잔하게 알려 주세요",
-        seedPatch: { notificationTone: "quiet" }
-      },
-      {
-        key: "balanced",
-        label: "필요할 때는 알려 주세요",
-        seedPatch: { notificationTone: "balanced" }
-      }
-    ]
-  },
-  {
-    key: "rest_affinity",
-    type: "single_choice",
-    title: "가끔 파도에서 벗어나 쉬는 기능이 있으면 좋을까요?",
-    options: [
-      { key: "high", label: "자주 쓸 것 같아요", seedPatch: { restModeAffinity: "high" } },
-      {
-        key: "medium",
-        label: "가끔 필요할 것 같아요",
-        seedPatch: { restModeAffinity: "medium" }
-      },
-      { key: "low", label: "아직은 모르겠어요", seedPatch: { restModeAffinity: "low" } }
     ]
   },
   {
     key: "relationship_detail",
+    order: 50,
     type: "single_choice",
-    title: "관계 이야기라면 어떤 결이 더 가깝나요?",
-    subtitle: "선택 질문이에요.",
+    title: "사람과 거리라면, 어느 결이 더 가까워요?",
+    subtitle: "선택을 조금 더 분명하게 하기 위한 짧은 질문이에요.",
     allowSkip: true,
+    clarifyOnly: true,
     branchRules: [{ questionKey: "primary_topic", anyOf: ["relationships"] }],
     options: [
-      { key: "distance", label: "멀어진 거리감", seedPatch: { emotions: { grief: 1 } } },
+      { key: "distance", label: "멀어진 거리", seedPatch: { emotions: { grief: 1 } } },
       {
         key: "misunderstanding",
-        label: "오해와 엇갈림",
+        label: "오해와 어긋남",
         seedPatch: { emotions: { frustration: 1 } }
       },
       {
-        key: "breakup",
-        label: "끝난 관계",
-        seedPatch: { emotions: { grief: 2, isolation: 1 } }
+        key: "care",
+        label: "아끼지만 어려운 마음",
+        seedPatch: { emotions: { quiet_hope: 1 } }
       }
     ]
   },
   {
     key: "stimulation_sensitivity",
+    order: 60,
     type: "scale",
     title: "지금은 얼마나 잔잔한 흐름이 편한가요?",
-    subtitle: "1은 조금 더 열어 둔 상태, 5는 아주 잔잔한 상태예요.",
+    subtitle: "1은 조금 더 열려 있음, 5는 아주 조용한 흐름이 필요한 상태예요.",
     min: 1,
     max: 5,
     step: 1,
     allowSkip: true,
-    branchRules: [{ questionKey: "exposure_tolerance", anyOf: ["low"] }]
+    clarifyOnly: true,
+    branchRules: [
+      { questionKey: "preferred_tone", anyOf: ["quiet"] },
+      { questionKey: "exposure_tolerance", anyOf: ["low"] }
+    ]
+  },
+  {
+    key: "notification_tone",
+    order: 70,
+    type: "single_choice",
+    title: "다시 불러줄 때는 어느 정도가 편할까요?",
+    allowSkip: true,
+    clarifyOnly: true,
+    branchRules: [{ questionKey: "preferred_tone", anyOf: ["resonant"] }],
+    options: [
+      { key: "off", label: "지금은 알림 없이", seedPatch: { notificationTone: "off" } },
+      { key: "quiet", label: "가끔 조용히", seedPatch: { notificationTone: "quiet" } },
+      { key: "balanced", label: "필요할 때는 알려주세요", seedPatch: { notificationTone: "balanced" } }
+    ]
   }
 ];
 
@@ -217,15 +168,47 @@ function shouldIncludeQuestion(question: OnboardingQuestion, answers: Onboarding
     return true;
   }
 
-  return question.branchRules.every((rule) => {
+  return question.branchRules.some((rule) => {
     const answer = answers.find((entry) => entry.questionKey === rule.questionKey);
     const values = normalizeAnswerValue(answer?.value ?? null);
     return values.some((value) => rule.anyOf.includes(value));
   });
 }
 
-export function getActiveOnboardingQuestions(answers: OnboardingAnswer[] = []) {
-  return onboardingQuestions.filter((question) => shouldIncludeQuestion(question, answers));
+function stableIndex(seed: string, length: number) {
+  if (length <= 0) {
+    return 0;
+  }
+
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+
+  return hash % length;
+}
+
+export function personalizeOnboardingQuestions(
+  questions: OnboardingQuestion[],
+  stableKey: string
+) {
+  return questions.map((question) => {
+    const variants = [question.title, ...(question.titleVariants ?? [])];
+    return {
+      ...question,
+      title: variants[stableIndex(`${stableKey}:${question.key}`, variants.length)]
+    };
+  });
+}
+
+export function getActiveOnboardingQuestions(
+  answers: OnboardingAnswer[] = [],
+  catalog: OnboardingQuestion[] = onboardingQuestions
+) {
+  return catalog
+    .filter((question) => shouldIncludeQuestion(question, answers))
+    .sort((left, right) => (left.order ?? 999) - (right.order ?? 999))
+    .slice(0, MAX_ONBOARDING_QUESTIONS);
 }
 
 export function buildSeedProfile(answers: OnboardingAnswer[]): OnboardingSeedProfile {

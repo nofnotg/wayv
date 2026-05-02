@@ -7,7 +7,7 @@ import { onboardingSubmissionSchema } from "@/lib/validation/schemas";
 
 export async function POST(request: NextRequest) {
   const viewer = await getViewerContext();
-  const guard = buildApprovedViewerApiGuard(viewer);
+  const guard = buildApprovedViewerApiGuard(viewer, { requireOnboarding: false });
   if (guard) {
     return guard;
   }
@@ -20,6 +20,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid-onboarding" }, { status: 400 });
   }
 
-  const seedProfile = await persistOnboardingAnswers(parsed.data.answers, approvedViewer.userId);
-  return NextResponse.json({ ok: true, seedProfile });
+  try {
+    const seedProfile = await persistOnboardingAnswers(parsed.data.answers, approvedViewer.userId);
+    return NextResponse.json({ ok: true, seedProfile });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid-onboarding";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

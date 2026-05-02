@@ -13,7 +13,8 @@ import {
 import { getOperatorAccess } from "@/lib/services/operator-access-service";
 import {
   operatorPasswordSignInSchema,
-  signInRequestSchema
+  signInRequestSchema,
+  socialSignInSchema
 } from "@/lib/validation/schemas";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
@@ -140,6 +141,47 @@ export async function requestSignInLinkAction(formData: FormData) {
   }
 
   redirect("/auth/sign-in?status=check-email");
+}
+
+export async function socialSignInAction(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/auth/sign-in?error=missing-env");
+  }
+
+  const parsed = socialSignInSchema.safeParse({
+    provider: String(formData.get("provider") ?? ""),
+    next: String(formData.get("next") ?? "/")
+  });
+
+  if (!parsed.success) {
+    redirect("/auth/sign-in?error=invalid-social-provider");
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const redirectTo = new URL("/auth/callback", getAppUrl());
+  redirectTo.searchParams.set("next", sanitizeNextPath(parsed.data.next));
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: parsed.data.provider,
+    options: {
+      redirectTo: redirectTo.toString()
+    }
+  });
+
+  if (error || !data.url) {
+    redirect("/auth/sign-in?error=social-login-unavailable");
+  }
+
+  await recordProductEventSafe({
+    eventKey: "signup_started",
+    targetType: "auth",
+    metadata: {
+      method: parsed.data.provider,
+      next: sanitizeNextPath(parsed.data.next)
+    }
+  });
+
+  redirect(data.url as Route);
 }
 
 export async function operatorPasswordSignInAction(formData: FormData) {

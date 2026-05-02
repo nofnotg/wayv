@@ -1,6 +1,6 @@
 import {
-  operatorPasswordSignInAction,
-  requestSignInLinkAction
+  requestSignInLinkAction,
+  socialSignInAction
 } from "@/lib/services/auth-service";
 
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -12,6 +12,38 @@ type SignInFormProps = {
 export function SignInForm({ nextPath }: SignInFormProps) {
   return (
     <div className="grid gap-6">
+      <div className="grid gap-3">
+        <form action={socialSignInAction}>
+          <input type="hidden" name="next" value={nextPath} />
+          <input type="hidden" name="provider" value="google" />
+          <SubmitButton pendingLabel="Google로 들어가는 중이에요...">
+            Google로 계속하기
+          </SubmitButton>
+        </form>
+        <form action={socialSignInAction}>
+          <input type="hidden" name="next" value={nextPath} />
+          <input type="hidden" name="provider" value="kakao" />
+          <button
+            type="submit"
+            className="inline-flex w-full items-center justify-center rounded-full border border-[#e5c444] bg-[#fee500] px-5 py-3 text-sm font-medium text-[#191600] transition hover:bg-[#f7dc00]"
+          >
+            Kakao로 계속하기
+          </button>
+        </form>
+        <p className="text-xs leading-5 text-[#7c8478]">
+          소셜 로그인은 계정을 확인하는 문이에요. 베타 승인은 기존처럼 따로 확인됩니다.
+        </p>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <div className="w-full border-t border-[#ded5c6]" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-[#fffaf0] px-3 text-xs text-[#8a8275]">또는 이메일 링크</span>
+        </div>
+      </div>
+
       <form action={requestSignInLinkAction} className="space-y-4">
         <input type="hidden" name="next" value={nextPath} />
         <label className="block space-y-2">
@@ -28,38 +60,6 @@ export function SignInForm({ nextPath }: SignInFormProps) {
           로그인 링크 보내기
         </SubmitButton>
       </form>
-
-      <div className="rounded-[1.75rem] border border-[#e3d8c4] bg-[#fff7e8]/70 p-4">
-        <p className="text-sm font-medium text-[#27372f]">운영자 바로 로그인</p>
-        <p className="mt-1 text-xs leading-5 text-[#6d746a]">
-          운영 권한이 있는 계정만 사용할 수 있어요. 일반 사용자는 위 이메일 링크로 들어옵니다.
-        </p>
-        <form action={operatorPasswordSignInAction} className="mt-4 grid gap-3">
-          <input type="hidden" name="next" value={nextPath} />
-          <label className="block space-y-2">
-            <span className="text-xs font-medium text-[#5f675f]">운영자 이메일</span>
-            <input
-              type="email"
-              name="operatorEmail"
-              defaultValue="nofnotg@gmail.com"
-              required
-              className="w-full rounded-2xl border border-[#ddd4c3] bg-white/85 px-4 py-3 text-sm text-[#22302b] outline-none ring-0 transition focus:border-[#9e8f72]"
-            />
-          </label>
-          <label className="block space-y-2">
-            <span className="text-xs font-medium text-[#5f675f]">비밀번호</span>
-            <input
-              type="password"
-              name="operatorPassword"
-              required
-              className="w-full rounded-2xl border border-[#ddd4c3] bg-white/85 px-4 py-3 text-sm text-[#22302b] outline-none ring-0 transition focus:border-[#9e8f72]"
-            />
-          </label>
-          <SubmitButton pendingLabel="운영 권한을 확인하는 중이에요...">
-            운영자로 들어가기
-          </SubmitButton>
-        </form>
-      </div>
     </div>
   );
 }

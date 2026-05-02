@@ -3,9 +3,14 @@ import { revalidatePath } from "next/cache";
 import {
   buildSeedProfile,
   getActiveOnboardingQuestions,
-  onboardingQuestions
+  onboardingQuestions,
+  personalizeOnboardingQuestions
 } from "@/lib/config/onboarding-questions";
-import type { OnboardingAnswer, OnboardingSeedProfile } from "@/lib/domain/types";
+import type {
+  OnboardingAnswer,
+  OnboardingQuestion,
+  OnboardingSeedProfile
+} from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
@@ -17,11 +22,119 @@ export function getQuestionCatalog() {
   return onboardingQuestions;
 }
 
+function mapQuestionRow(row: Record<string, unknown>): OnboardingQuestion {
+  const config = (row.config ?? {}) as Partial<OnboardingQuestion>;
+
+  return {
+    key: String(row.key),
+    type: row.type as OnboardingQuestion["type"],
+    title: String(row.title),
+    subtitle: (row.subtitle as string | null) ?? undefined,
+    titleVariants: config.titleVariants,
+    options: config.options,
+    min: config.min,
+    max: config.max,
+    step: config.step,
+    placeholder: config.placeholder,
+    allowSkip: config.allowSkip,
+    branchRules: config.branchRules,
+    order: config.order,
+    clarifyOnly: config.clarifyOnly
+  };
+}
+
+export async function getQuestionCatalogForViewer(stableKey: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("onboarding_questions")
+    .select("key, type, title, subtitle, config")
+    .eq("is_active", true)
+    .eq("version", 2);
+
+  const catalog =
+    error || !data?.length
+      ? onboardingQuestions
+      : data.map((row) => mapQuestionRow(row as Record<string, unknown>));
+
+  return personalizeOnboardingQuestions(catalog, stableKey);
+}
+
 export function buildOnboardingSeedProfile(answers: OnboardingAnswer[]): OnboardingSeedProfile {
   return buildSeedProfile(answers);
 }
 
+export function validateOnboardingAnswers(answers: OnboardingAnswer[]) {
+  const activeQuestions = getActiveOnboardingQuestions(answers);
+  const activeKeys = new Set(activeQuestions.map((question) => question.key));
+
+  if (activeQuestions.length > 5 || answers.length > 5) {
+    return { ok: false as const, error: "too-many-answers" };
+  }
+
+  for (const answer of answers) {
+    if (!activeKeys.has(answer.questionKey)) {
+      return { ok: false as const, error: "inactive-question" };
+    }
+  }
+
+  for (const question of activeQuestions) {
+    const answer = answers.find((item) => item.questionKey === question.key);
+
+    if (!answer) {
+      if (question.allowSkip) {
+        continue;
+      }
+
+      return { ok: false as const, error: "missing-required-answer" };
+    }
+
+    if (answer.skipped || answer.value === null) {
+      if (question.allowSkip) {
+        continue;
+      }
+
+      return { ok: false as const, error: "missing-required-answer" };
+    }
+
+    if (question.type === "single_choice") {
+      const allowed = new Set(question.options?.map((option) => option.key) ?? []);
+      if (typeof answer.value !== "string" || !allowed.has(answer.value)) {
+        return { ok: false as const, error: "invalid-choice" };
+      }
+    }
+
+    if (question.type === "multi_choice") {
+      const allowed = new Set(question.options?.map((option) => option.key) ?? []);
+      const values = Array.isArray(answer.value) ? answer.value : [];
+      if (!values.length || values.some((value) => !allowed.has(value))) {
+        return { ok: false as const, error: "invalid-choice" };
+      }
+    }
+
+    if (question.type === "scale") {
+      const min = question.min ?? 1;
+      const max = question.max ?? 5;
+      if (typeof answer.value !== "number" || answer.value < min || answer.value > max) {
+        return { ok: false as const, error: "invalid-scale" };
+      }
+    }
+
+    if (question.type === "short_text") {
+      if (typeof answer.value !== "string" || answer.value.length > 160) {
+        return { ok: false as const, error: "invalid-text" };
+      }
+    }
+  }
+
+  return { ok: true as const };
+}
+
 export async function persistOnboardingAnswers(answers: OnboardingAnswer[], userId: string) {
+  const validation = validateOnboardingAnswers(answers);
+  if (!validation.ok) {
+    throw new Error(validation.error);
+  }
+
   const supabase = await createServerSupabaseClient();
   const seedProfile = buildOnboardingSeedProfile(answers);
   const now = new Date().toISOString();

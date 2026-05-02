@@ -112,7 +112,7 @@ describe("home page", () => {
     expect(html).toContain("beta-state:pending");
   });
 
-  it("lets approved users continue to onboarding when onboarding is incomplete", async () => {
+  it("forces approved users into onboarding when onboarding is incomplete", async () => {
     getViewerContext.mockResolvedValue({
       userId: "viewer-1",
       profile: { nickname: "wave-user", onboardingCompletedAt: null },
@@ -120,8 +120,7 @@ describe("home page", () => {
     });
 
     const Page = (await import("../../app/page")).default;
-    const html = renderToStaticMarkup(await Page());
 
-    expect(html).toContain("/onboarding");
+    await expect(Page()).rejects.toThrow("NEXT_REDIRECT");
   });
 });

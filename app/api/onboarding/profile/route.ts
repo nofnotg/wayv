@@ -6,7 +6,7 @@ import { getViewerContext } from "@/lib/services/viewer-service";
 
 export async function GET() {
   const viewer = await getViewerContext();
-  const guard = buildApprovedViewerApiGuard(viewer);
+  const guard = buildApprovedViewerApiGuard(viewer, { requireOnboarding: false });
   if (guard) {
     return guard;
   }

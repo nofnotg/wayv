@@ -17,7 +17,9 @@ import {
   privateResonanceChoiceValues,
   profileVisibilityValues,
   productEventKeyValues,
+  productPlanValues,
   seedAuthorTypeValues,
+  socialAuthProviderValues,
   waveReactionTypeValues,
   waveCategoryValues
 } from "@/lib/domain/types";
@@ -40,6 +42,18 @@ export const signInRequestSchema = emailSchema.extend({
 
 export const operatorPasswordSignInSchema = emailSchema.extend({
   password: z.string().min(1),
+  next: nextPathSchema.optional()
+});
+
+export const socialSignInSchema = z.object({
+  provider: z.enum(socialAuthProviderValues),
+  next: nextPathSchema.optional()
+});
+
+export const operatorPlanPreviewSchema = z.object({
+  plan: z.enum(productPlanValues).refine((value) => value === "free" || value === "swim", {
+    message: "only free and swim previews are enabled"
+  }),
   next: nextPathSchema.optional()
 });
 

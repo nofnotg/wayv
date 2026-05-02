@@ -7,8 +7,10 @@ import {
 } from "../../lib/supabase/env";
 import {
   notificationDeviceSchema,
+  operatorPlanPreviewSchema,
   privateResonanceTraceSchema,
   signInRequestSchema,
+  socialSignInSchema,
   wavePostSchema
 } from "../../lib/validation/schemas";
 
@@ -27,6 +29,18 @@ describe("schemas and env helpers", () => {
       email: "hello@wayv.app",
       next: "/onboarding"
     });
+  });
+
+  it("validates social auth and operator plan preview inputs", () => {
+    expect(socialSignInSchema.parse({ provider: "google", next: "/" }).provider).toBe("google");
+    expect(socialSignInSchema.parse({ provider: "kakao", next: "/onboarding" }).provider).toBe(
+      "kakao"
+    );
+    expect(() => socialSignInSchema.parse({ provider: "apple" })).toThrow();
+
+    expect(operatorPlanPreviewSchema.parse({ plan: "free" }).plan).toBe("free");
+    expect(operatorPlanPreviewSchema.parse({ plan: "swim" }).plan).toBe("swim");
+    expect(() => operatorPlanPreviewSchema.parse({ plan: "surffer" })).toThrow();
   });
 
   it("sanitizes open redirects", () => {

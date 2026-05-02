@@ -5,6 +5,12 @@ import type { ReactNode } from "react";
 import { signOutAction } from "@/lib/services/auth-service";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type { NotificationInboxSummary } from "@/lib/domain/types";
+import {
+  getOperatorPlanPreview,
+  getPlanLabel,
+  getPlanPreviewFeatures,
+  setOperatorPlanPreviewAction
+} from "@/lib/services/plan-preview-service";
 import type { ViewerContext } from "@/lib/services/viewer-service";
 
 type AppShellProps = {
@@ -17,6 +23,8 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
   const canUseProduct = Boolean(
     viewer && (viewer.betaAccess?.status === "approved" || viewer.operatorAccess)
   );
+  const planPreview = await getOperatorPlanPreview(viewer?.userId);
+  const planFeatures = getPlanPreviewFeatures(planPreview);
 
   return (
     <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_18%_0%,_rgba(105,132,116,0.18),_transparent_34%),radial-gradient(circle_at_88%_12%,_rgba(218,178,128,0.20),_transparent_30%),linear-gradient(180deg,_#f6f1e8_0%,_#eef3ed_52%,_#e8f0f2_100%)] text-[#22302b]">
@@ -37,15 +45,25 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
               <>
                 {canUseProduct ? (
                   <>
-                    <Link
-                      href="/write"
-                      className="rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
-                    >
-                      {systemCopy.navigation.write}
-                    </Link>
+                    {planFeatures.canWrite ? (
+                      <Link
+                        href="/write"
+                        className="rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
+                      >
+                        {systemCopy.navigation.write}
+                      </Link>
+                    ) : (
+                      <span className="rounded-full px-3 py-2 text-[#9a9488]" title="Free 미리보기에서는 쓰기 흐름이 닫혀 있어요.">
+                        {systemCopy.navigation.write}
+                      </span>
+                    )}
                     <Link
                       href={"/inbox" as Route}
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-2 transition ${
+                        planFeatures.canUseNotifications
+                          ? "hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
+                          : "pointer-events-none text-[#9a9488]"
+                      }`}
                     >
                       {systemCopy.navigation.inbox}
                       {notificationSummary?.hasUnread ? (
@@ -57,12 +75,18 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
                         </span>
                       ) : null}
                     </Link>
-                    <Link
-                      href={"/traces" as Route}
-                      className="rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
-                    >
-                      {systemCopy.navigation.traces}
-                    </Link>
+                    {planFeatures.canUsePrivateTraces ? (
+                      <Link
+                        href={"/traces" as Route}
+                        className="rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
+                      >
+                        {systemCopy.navigation.traces}
+                      </Link>
+                    ) : (
+                      <span className="rounded-full px-3 py-2 text-[#9a9488]" title="Free 미리보기에서는 내 잔상이 닫혀 있어요.">
+                        {systemCopy.navigation.traces}
+                      </span>
+                    )}
                     <Link
                       href="/profile"
                       className="rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
@@ -82,12 +106,41 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
                       {"\ud53c\ub4dc\ubc31"}
                     </Link>
                     {viewer.operatorAccess ? (
-                      <Link
-                        href={"/internal/operator" as Route}
-                        className="rounded-full border border-[#d7c7a8] bg-[#fff4dc]/75 px-3 py-2 text-[#745723] transition hover:border-[#b99652] hover:bg-[#f8e6bd]"
-                      >
-                        {"\uc6b4\uc601"}
-                      </Link>
+                      <>
+                        <form action={setOperatorPlanPreviewAction} className="flex rounded-full border border-[#d7c7a8] bg-[#fff4dc]/75 p-1">
+                          <input type="hidden" name="next" value="/" />
+                          <button
+                            type="submit"
+                            name="plan"
+                            value="free"
+                            className={`rounded-full px-3 py-1.5 text-xs transition ${
+                              planPreview === "free"
+                                ? "bg-[#745723] text-[#fffaf0]"
+                                : "text-[#745723] hover:bg-[#f8e6bd]"
+                            }`}
+                          >
+                            Free
+                          </button>
+                          <button
+                            type="submit"
+                            name="plan"
+                            value="swim"
+                            className={`rounded-full px-3 py-1.5 text-xs transition ${
+                              planPreview === "swim"
+                                ? "bg-[#745723] text-[#fffaf0]"
+                                : "text-[#745723] hover:bg-[#f8e6bd]"
+                            }`}
+                          >
+                            Swim
+                          </button>
+                        </form>
+                        <Link
+                          href={"/internal/operator" as Route}
+                          className="rounded-full border border-[#d7c7a8] bg-[#fff4dc]/75 px-3 py-2 text-[#745723] transition hover:border-[#b99652] hover:bg-[#f8e6bd]"
+                        >
+                          {"\uc6b4\uc601"}
+                        </Link>
+                      </>
                     ) : null}
                   </>
                 ) : null}
@@ -118,6 +171,12 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
             )}
           </nav>
         </header>
+        {viewer?.operatorAccess ? (
+          <div className="mb-6 rounded-[1.5rem] border border-[#d7c7a8] bg-[#fff4dc]/72 px-5 py-4 text-sm text-[#745723] shadow-[0_18px_50px_rgba(116,87,35,0.10)]">
+            <span className="font-medium">운영자 플랜 프리뷰: {getPlanLabel(planPreview)}</span>
+            <span className="ml-2 text-[#7f6942]">{planFeatures.description}</span>
+          </div>
+        ) : null}
         <main className="flex-1">{children}</main>
       </div>
     </div>

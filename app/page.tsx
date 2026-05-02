@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { BetaAccessStateCard } from "@/components/beta-access-state-card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -88,26 +89,8 @@ export default async function HomePage() {
     );
   }
 
-  if (!viewer.profile.onboardingCompletedAt) {
-    return (
-      <div className="grid gap-6">
-        <PageHeader
-          title={`\uc548\ub155\ud558\uc138\uc694, ${viewer.profile.nickname}`}
-          description={systemCopy.home.onboardingPrompt}
-        />
-        <SectionCard>
-          <p className="text-sm leading-7 text-slate-700">
-            {systemCopy.home.onboardingCardDescription}
-          </p>
-          <Link
-            href="/onboarding"
-            className="mt-6 inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm text-white"
-          >
-            {systemCopy.home.onboardingCta}
-          </Link>
-        </SectionCard>
-      </div>
-    );
+  if (!viewer.operatorAccess && !viewer.profile.onboardingCompletedAt) {
+    redirect("/onboarding");
   }
 
   const seedProfile = await getStoredSeedProfile(viewer.userId);

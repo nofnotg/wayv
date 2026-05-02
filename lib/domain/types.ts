@@ -16,6 +16,12 @@ export const onboardingQuestionTypeValues = [
 
 export type OnboardingQuestionType = (typeof onboardingQuestionTypeValues)[number];
 
+export const socialAuthProviderValues = ["google", "kakao"] as const;
+export type SocialAuthProvider = (typeof socialAuthProviderValues)[number];
+
+export const productPlanValues = ["free", "swim", "surffer"] as const;
+export type ProductPlan = (typeof productPlanValues)[number];
+
 export const waveCategoryValues = [
   "work",
   "money",
@@ -327,6 +333,7 @@ export type OnboardingQuestion = {
   key: string;
   type: OnboardingQuestionType;
   title: string;
+  titleVariants?: string[];
   subtitle?: string;
   options?: OnboardingQuestionOption[];
   min?: number;
@@ -335,6 +342,8 @@ export type OnboardingQuestion = {
   placeholder?: string;
   allowSkip?: boolean;
   branchRules?: OnboardingQuestionRule[];
+  order?: number;
+  clarifyOnly?: boolean;
 };
 
 export type OnboardingAnswerValue = string | string[] | number | null;

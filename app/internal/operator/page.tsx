@@ -1,5 +1,7 @@
 import React from "react";
 import { headers } from "next/headers";
+import Link from "next/link";
+import type { Route } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
@@ -135,6 +137,27 @@ export default async function OperatorPage() {
   return (
     <div className="grid gap-6">
       <PageHeader title={systemCopy.operator.title} description={systemCopy.operator.description} />
+
+      <SectionCard title="운영자 사용자 흐름 검수">
+        <p className="text-sm leading-7 text-slate-600">
+          운영자는 일반 사용자 UI를 그대로 쓰면서, 운영 전용 버튼과 검수 도구만 따로 표시됩니다.
+          Free/Swim 플랜 프리뷰는 상단에서 바꿀 수 있고 온보딩은 저장 없이 미리 볼 수 있어요.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href={"/onboarding?preview=operator" as Route}
+            className="rounded-full bg-[#17241f] px-5 py-3 text-sm font-medium text-[#fffaf0]"
+          >
+            온보딩 미리보기
+          </Link>
+          <Link
+            href={"/" as Route}
+            className="rounded-full border border-[#d8d0c1] px-5 py-3 text-sm text-[#5c665f]"
+          >
+            일반 UI로 돌아가기
+          </Link>
+        </div>
+      </SectionCard>
 
       <SectionCard title="배포 베타 점검">
         <p className="text-sm leading-7 text-slate-600">
