@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
@@ -9,7 +10,11 @@ import {
   hasSupabaseEnv,
   sanitizeNextPath
 } from "@/lib/supabase/env";
-import { signInRequestSchema } from "@/lib/validation/schemas";
+import { getOperatorAccess } from "@/lib/services/operator-access-service";
+import {
+  operatorPasswordSignInSchema,
+  signInRequestSchema
+} from "@/lib/validation/schemas";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
 export async function requestSignInLink(input: { email: string; next?: string }) {
@@ -129,11 +134,56 @@ export async function requestSignInLinkAction(formData: FormData) {
 
   try {
     await requestSignInLink({ email, next });
-    redirect("/auth/sign-in?status=check-email");
   } catch (error) {
     const message = error instanceof Error ? error.message : "request-failed";
     redirect(`/auth/sign-in?error=${encodeURIComponent(message)}`);
   }
+
+  redirect("/auth/sign-in?status=check-email");
+}
+
+export async function operatorPasswordSignInAction(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/auth/sign-in?error=missing-env");
+  }
+
+  const parsed = operatorPasswordSignInSchema.safeParse({
+    email: String(formData.get("operatorEmail") ?? ""),
+    password: String(formData.get("operatorPassword") ?? ""),
+    next: String(formData.get("next") ?? "/")
+  });
+
+  if (!parsed.success) {
+    redirect("/auth/sign-in?error=invalid-operator-login");
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password
+  });
+
+  if (error || !data.user?.id) {
+    redirect("/auth/sign-in?error=operator-login-failed");
+  }
+
+  const operatorAccess = await getOperatorAccess(data.user.id);
+  if (!operatorAccess) {
+    await supabase.auth.signOut();
+    redirect("/auth/sign-in?error=operator-access-required");
+  }
+
+  await recordProductEventSafe({
+    userId: data.user.id,
+    eventKey: "signup_completed",
+    targetType: "auth",
+    targetId: data.user.id,
+    metadata: {
+      method: "operator-password"
+    }
+  });
+
+  redirect(sanitizeNextPath(parsed.data.next) as Route);
 }
 
 export async function signOutAction() {

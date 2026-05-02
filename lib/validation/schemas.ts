@@ -38,6 +38,11 @@ export const signInRequestSchema = emailSchema.extend({
   next: nextPathSchema.optional()
 });
 
+export const operatorPasswordSignInSchema = emailSchema.extend({
+  password: z.string().min(1),
+  next: nextPathSchema.optional()
+});
+
 export const betaApplicationSchema = z.object({
   email: z.string().trim().email("올바른 이메일을 입력해 주세요."),
   applicantName: z.string().trim().min(1).max(40).nullable().optional(),
