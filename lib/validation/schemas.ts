@@ -14,6 +14,7 @@ import {
   notificationDigestModeValues,
   notificationEventStateValues,
   notificationPlatformValues,
+  onboardingQuestionTypeValues,
   privateResonanceChoiceValues,
   profileVisibilityValues,
   productEventKeyValues,
@@ -274,4 +275,56 @@ export const betaAccessDecisionSchema = z.object({
 export const betaAccessListQuerySchema = z.object({
   status: z.enum(betaAccessStatusValues).nullable().optional(),
   limit: z.number().int().min(1).max(100).default(20)
+});
+
+const onboardingAdminKeySchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z0-9_]+$/);
+
+export const onboardingSourceMutationSchema = z.object({
+  key: onboardingAdminKeySchema,
+  label: z.string().trim().min(2).max(80),
+  intent: z.string().trim().min(4).max(400),
+  psychologicalBasis: z.string().trim().min(4).max(600),
+  type: z.enum(onboardingQuestionTypeValues),
+  profileTargets: z.array(z.string().trim().min(1).max(60)).max(12).default([]),
+  maxSelect: z.number().int().min(1).max(5).nullable().optional(),
+  orderIndex: z.number().int().min(0).max(999).default(100),
+  isRequired: z.boolean().default(true),
+  isClarifier: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+  operatorNote: z.string().trim().max(400).nullable().optional()
+});
+
+export const onboardingPhrasingMutationSchema = z.object({
+  id: z.string().uuid().optional(),
+  sourceKey: onboardingAdminKeySchema,
+  locale: z.string().trim().min(2).max(8).default("ko"),
+  text: z.string().trim().min(4).max(220),
+  subtitle: z.string().trim().max(220).nullable().optional(),
+  isPrimary: z.boolean().default(false),
+  isActive: z.boolean().default(true)
+});
+
+export const onboardingOptionMutationSchema = z.object({
+  id: z.string().uuid().optional(),
+  sourceKey: onboardingAdminKeySchema,
+  optionKey: onboardingAdminKeySchema,
+  label: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(220).nullable().optional(),
+  seedPatch: z.record(z.string(), z.unknown()).default({}),
+  orderIndex: z.number().int().min(0).max(999).default(100),
+  isActive: z.boolean().default(true)
+});
+
+export const onboardingBranchMutationSchema = z.object({
+  id: z.string().uuid().optional(),
+  sourceKey: onboardingAdminKeySchema,
+  dependsOnSourceKey: onboardingAdminKeySchema,
+  anyOf: z.array(onboardingAdminKeySchema).min(1).max(8),
+  orderIndex: z.number().int().min(0).max(999).default(100),
+  isActive: z.boolean().default(true)
 });

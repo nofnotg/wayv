@@ -13,6 +13,10 @@ import {
   evaluateContentGuardrail,
   recordContentGuardrailFlag
 } from "@/lib/services/content-guardrail-service";
+import {
+  grantBetaSwimEntitlement,
+  revokeBetaEntitlementForUser
+} from "@/lib/services/entitlement-service";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -373,6 +377,20 @@ export async function updateBetaAccessRequestStatus(input: {
     nextStatus: parsed.status,
     note: parsed.note ?? null
   });
+
+  if (request.userId && parsed.status === "approved") {
+    await grantBetaSwimEntitlement({
+      userId: request.userId,
+      grantedByUserId: input.actorUserId ?? null
+    });
+  }
+
+  if (request.userId && parsed.status === "revoked") {
+    await revokeBetaEntitlementForUser({
+      userId: request.userId,
+      grantedByUserId: input.actorUserId ?? null
+    });
+  }
 
   return { request, audit };
 }

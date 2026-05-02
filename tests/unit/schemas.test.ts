@@ -5,6 +5,7 @@ import {
   isAllowedMobileAuthRedirect,
   sanitizeNextPath
 } from "../../lib/supabase/env";
+import { productPlanValues } from "../../lib/domain/types";
 import {
   notificationDeviceSchema,
   operatorPlanPreviewSchema,
@@ -38,9 +39,12 @@ describe("schemas and env helpers", () => {
     );
     expect(() => socialSignInSchema.parse({ provider: "apple" })).toThrow();
 
+    expect(productPlanValues).toContain("surfer");
+    expect(productPlanValues).not.toContain("surferx");
     expect(operatorPlanPreviewSchema.parse({ plan: "free" }).plan).toBe("free");
     expect(operatorPlanPreviewSchema.parse({ plan: "swim" }).plan).toBe("swim");
-    expect(() => operatorPlanPreviewSchema.parse({ plan: "surffer" })).toThrow();
+    expect(() => operatorPlanPreviewSchema.parse({ plan: "surfer" })).toThrow();
+    expect(() => operatorPlanPreviewSchema.parse({ plan: "surferx" })).toThrow();
   });
 
   it("sanitizes open redirects", () => {

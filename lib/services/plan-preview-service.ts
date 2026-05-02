@@ -19,7 +19,7 @@ export function getPlanLabel(plan: ProductPlan) {
     return "Swim";
   }
 
-  return "Surffer";
+  return "Surfer";
 }
 
 export function getPlanPreviewFeatures(plan: ProductPlan) {

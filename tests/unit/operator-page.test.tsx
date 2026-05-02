@@ -22,6 +22,8 @@ const listRecentContentGuardrailFlags = vi.fn();
 const summarizeContentGuardrailFlags = vi.fn();
 const getSeedContentStatus = vi.fn();
 const getBetaDeploymentSelfCheck = vi.fn();
+const listOnboardingSourceBundles = vi.fn();
+const listOperatorUsers = vi.fn();
 
 vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue({
@@ -77,6 +79,14 @@ vi.mock("@/features/operator/operator-console", () => ({
 
 vi.mock("@/features/operator/moderation-feedback-panel", () => ({
   ModerationFeedbackPanel: () => <div>moderation-feedback-panel</div>
+}));
+
+vi.mock("@/features/operator/onboarding-source-panel", () => ({
+  OnboardingSourcePanel: () => <div>onboarding-source-panel</div>
+}));
+
+vi.mock("@/features/operator/user-management-panel", () => ({
+  UserManagementPanel: () => <div>user-management-panel</div>
 }));
 
 vi.mock("@/lib/services/viewer-service", () => ({
@@ -138,6 +148,14 @@ vi.mock("@/lib/services/seed-content-service", () => ({
 
 vi.mock("@/lib/services/beta-deployment-self-check-service", () => ({
   getBetaDeploymentSelfCheck
+}));
+
+vi.mock("@/lib/services/onboarding-admin-service", () => ({
+  listOnboardingSourceBundles
+}));
+
+vi.mock("@/lib/services/operator-user-service", () => ({
+  listOperatorUsers
 }));
 
 describe("operator page", () => {
@@ -222,11 +240,15 @@ describe("operator page", () => {
       overallStatus: "ready_with_caution",
       notes: ["노트"]
     });
+    listOnboardingSourceBundles.mockResolvedValue([]);
+    listOperatorUsers.mockResolvedValue([]);
 
     const { default: OperatorPage } = await import("../../app/internal/operator/page");
     const html = renderToStaticMarkup(await OperatorPage());
 
     expect(html).toContain("beta-access-panel");
+    expect(html).toContain("user-management-panel");
+    expect(html).toContain("onboarding-source-panel");
     expect(html).toContain("moderation-feedback-panel");
     expect(html).toContain("operator-console");
     expect(html).toContain("배포 베타 점검");

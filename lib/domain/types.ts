@@ -19,8 +19,18 @@ export type OnboardingQuestionType = (typeof onboardingQuestionTypeValues)[numbe
 export const socialAuthProviderValues = ["google", "kakao"] as const;
 export type SocialAuthProvider = (typeof socialAuthProviderValues)[number];
 
-export const productPlanValues = ["free", "swim", "surffer"] as const;
+export const productPlanValues = ["free", "swim", "surfer"] as const;
 export type ProductPlan = (typeof productPlanValues)[number];
+
+export const entitlementStatusValues = ["active", "inactive", "revoked", "expired"] as const;
+export type EntitlementStatus = (typeof entitlementStatusValues)[number];
+
+export const entitlementSourceValues = [
+  "beta_operator_grant",
+  "manual_operator_grant",
+  "payment"
+] as const;
+export type EntitlementSource = (typeof entitlementSourceValues)[number];
 
 export const waveCategoryValues = [
   "work",
@@ -303,6 +313,100 @@ export type BetaAccessAuditLog = {
   nextStatus: BetaAccessStatus;
   note: string | null;
   createdAt: string;
+};
+
+export type ProductPlanRecord = {
+  key: ProductPlan;
+  displayName: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UserEntitlement = {
+  id: string;
+  userId: string;
+  planKey: ProductPlan;
+  source: EntitlementSource;
+  status: EntitlementStatus;
+  startsAt: string;
+  endsAt: string | null;
+  grantedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OperatorUserListItem = {
+  userId: string;
+  email: string;
+  nickname: string | null;
+  onboardingCompletedAt: string | null;
+  lastActiveAt: string | null;
+  betaRequest: BetaAccessRequest | null;
+  operatorRole: "operator" | "admin" | null;
+  entitlement: UserEntitlement | null;
+};
+
+export type OnboardingQuestionSource = {
+  key: string;
+  version: number;
+  label: string;
+  intent: string;
+  psychologicalBasis: string;
+  type: OnboardingQuestionType;
+  profileTargets: string[];
+  maxSelect: number | null;
+  orderIndex: number;
+  isRequired: boolean;
+  isClarifier: boolean;
+  isActive: boolean;
+  operatorNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OnboardingQuestionPhrasing = {
+  id: string;
+  sourceKey: string;
+  locale: string;
+  text: string;
+  subtitle: string | null;
+  isPrimary: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OnboardingQuestionOptionRecord = {
+  id: string;
+  sourceKey: string;
+  optionKey: string;
+  label: string;
+  description: string | null;
+  seedPatch: OnboardingQuestionSeedPatch;
+  orderIndex: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OnboardingQuestionBranch = {
+  id: string;
+  sourceKey: string;
+  dependsOnSourceKey: string;
+  anyOf: string[];
+  orderIndex: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OnboardingQuestionSourceBundle = {
+  source: OnboardingQuestionSource;
+  phrasings: OnboardingQuestionPhrasing[];
+  options: OnboardingQuestionOptionRecord[];
+  branches: OnboardingQuestionBranch[];
 };
 
 export type OnboardingQuestionSeedPatch = {

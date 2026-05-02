@@ -12,6 +12,7 @@ import type {
   OnboardingSeedProfile
 } from "@/lib/domain/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { listOnboardingSourceBundles } from "@/lib/services/onboarding-admin-service";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
 export function getQuestionFlow(answers: OnboardingAnswer[] = []) {
@@ -43,7 +44,66 @@ function mapQuestionRow(row: Record<string, unknown>): OnboardingQuestion {
   };
 }
 
-export async function getQuestionCatalogForViewer(stableKey: string) {
+function mapSourceBundleToQuestion(
+  bundle: Awaited<ReturnType<typeof listOnboardingSourceBundles>>[number]
+): OnboardingQuestion | null {
+  const primaryPhrasing =
+    bundle.phrasings.find((phrasing) => phrasing.isActive && phrasing.isPrimary) ??
+    bundle.phrasings.find((phrasing) => phrasing.isActive);
+
+  if (!primaryPhrasing) {
+    return null;
+  }
+
+  const activePhrasings = bundle.phrasings.filter((phrasing) => phrasing.isActive);
+  const activeOptions = bundle.options
+    .filter((option) => option.isActive)
+    .sort((left, right) => left.orderIndex - right.orderIndex);
+  const activeBranches = bundle.branches
+    .filter((branch) => branch.isActive)
+    .sort((left, right) => left.orderIndex - right.orderIndex);
+
+  return {
+    key: bundle.source.key,
+    type: bundle.source.type,
+    title: primaryPhrasing.text,
+    subtitle: primaryPhrasing.subtitle ?? undefined,
+    titleVariants: activePhrasings
+      .filter((phrasing) => phrasing.id !== primaryPhrasing.id)
+      .map((phrasing) => phrasing.text),
+    options: activeOptions.map((option) => ({
+      key: option.optionKey,
+      label: option.label,
+      description: option.description ?? undefined,
+      seedPatch: option.seedPatch
+    })),
+    min: bundle.source.type === "scale" ? 1 : undefined,
+    max: bundle.source.type === "scale" ? 5 : undefined,
+    step: bundle.source.type === "scale" ? 1 : undefined,
+    allowSkip: !bundle.source.isRequired,
+    branchRules: activeBranches.map((branch) => ({
+      questionKey: branch.dependsOnSourceKey,
+      anyOf: branch.anyOf
+    })),
+    order: bundle.source.orderIndex,
+    clarifyOnly: bundle.source.isClarifier
+  };
+}
+
+async function getActiveCatalogFromDatabase() {
+  try {
+    const bundles = await listOnboardingSourceBundles();
+    const questions = bundles
+      .map((bundle) => mapSourceBundleToQuestion(bundle))
+      .filter((question): question is OnboardingQuestion => Boolean(question));
+
+    if (questions.length) {
+      return questions;
+    }
+  } catch {
+    // If v3 tables are not migrated yet, keep the v2/static flow alive.
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("onboarding_questions")
@@ -51,11 +111,13 @@ export async function getQuestionCatalogForViewer(stableKey: string) {
     .eq("is_active", true)
     .eq("version", 2);
 
-  const catalog =
-    error || !data?.length
-      ? onboardingQuestions
-      : data.map((row) => mapQuestionRow(row as Record<string, unknown>));
+  return error || !data?.length
+    ? onboardingQuestions
+    : data.map((row) => mapQuestionRow(row as Record<string, unknown>));
+}
 
+export async function getQuestionCatalogForViewer(stableKey: string) {
+  const catalog = await getActiveCatalogFromDatabase();
   return personalizeOnboardingQuestions(catalog, stableKey);
 }
 
@@ -63,8 +125,11 @@ export function buildOnboardingSeedProfile(answers: OnboardingAnswer[]): Onboard
   return buildSeedProfile(answers);
 }
 
-export function validateOnboardingAnswers(answers: OnboardingAnswer[]) {
-  const activeQuestions = getActiveOnboardingQuestions(answers);
+export function validateOnboardingAnswers(
+  answers: OnboardingAnswer[],
+  catalog: OnboardingQuestion[] = onboardingQuestions
+) {
+  const activeQuestions = getActiveOnboardingQuestions(answers, catalog);
   const activeKeys = new Set(activeQuestions.map((question) => question.key));
 
   if (activeQuestions.length > 5 || answers.length > 5) {
@@ -130,7 +195,8 @@ export function validateOnboardingAnswers(answers: OnboardingAnswer[]) {
 }
 
 export async function persistOnboardingAnswers(answers: OnboardingAnswer[], userId: string) {
-  const validation = validateOnboardingAnswers(answers);
+  const catalog = await getActiveCatalogFromDatabase();
+  const validation = validateOnboardingAnswers(answers, catalog);
   if (!validation.ok) {
     throw new Error(validation.error);
   }

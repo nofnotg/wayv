@@ -8,7 +8,9 @@ import { SectionCard } from "@/components/section-card";
 import { StatusChip } from "@/components/status-chip";
 import { BetaAccessPanel } from "@/features/operator/beta-access-panel";
 import { ModerationFeedbackPanel } from "@/features/operator/moderation-feedback-panel";
+import { OnboardingSourcePanel } from "@/features/operator/onboarding-source-panel";
 import { OperatorConsole } from "@/features/operator/operator-console";
+import { UserManagementPanel } from "@/features/operator/user-management-panel";
 import { systemCopy } from "@/lib/copy/system-copy";
 import type {
   BetaAccessAuditLog,
@@ -17,6 +19,8 @@ import type {
   ContentGuardrailFlag,
   ModerationFeedback,
   NotificationProviderValidationEntry,
+  OnboardingQuestionSourceBundle,
+  OperatorUserListItem,
   ProductEventLog
 } from "@/lib/domain/types";
 import {
@@ -42,6 +46,8 @@ import {
 import { listRecentModerationFeedback } from "@/lib/services/moderation-feedback-service";
 import { listNotificationDeliveryEvents } from "@/lib/services/notification-delivery-service";
 import { getOperatorAccess } from "@/lib/services/operator-access-service";
+import { listOnboardingSourceBundles } from "@/lib/services/onboarding-admin-service";
+import { listOperatorUsers } from "@/lib/services/operator-user-service";
 import { listRecentProductEvents, summarizeProductEvents } from "@/lib/services/product-event-service";
 import { getSeedContentStatus } from "@/lib/services/seed-content-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
@@ -106,7 +112,9 @@ export default async function OperatorPage() {
     productEvents,
     guardrailFlags,
     seedContentStatus,
-    betaSelfCheck
+    betaSelfCheck,
+    onboardingSources,
+    operatorUsers
   ] = await Promise.all([
     listModerationReports(50),
     listModerationAuditLogs(20),
@@ -126,7 +134,9 @@ export default async function OperatorPage() {
     getBetaDeploymentSelfCheck({
       requestUrl,
       viewerUserId: viewer.userId
-    })
+    }),
+    listOnboardingSourceBundles({ includeInactive: true }),
+    listOperatorUsers(40)
   ]);
 
   const retryableEventIds = deliveryEvents
@@ -221,6 +231,12 @@ export default async function OperatorPage() {
       <BetaAccessPanel
         initialRequests={betaAccessRequests as BetaAccessRequest[]}
         initialAudits={betaAccessAudits as BetaAccessAuditLog[]}
+      />
+
+      <UserManagementPanel initialUsers={operatorUsers as OperatorUserListItem[]} />
+
+      <OnboardingSourcePanel
+        initialSources={onboardingSources as OnboardingQuestionSourceBundle[]}
       />
 
       <ModerationFeedbackPanel initialFeedback={moderationFeedback as ModerationFeedback[]} />
