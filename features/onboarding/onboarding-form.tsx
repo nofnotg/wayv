@@ -10,6 +10,34 @@ import { systemCopy } from "@/lib/copy/system-copy";
 
 type AnswerMap = Record<string, OnboardingAnswer["value"]>;
 
+const tutorialSlides = [
+  {
+    eyebrow: "No. i — Horizon",
+    title: "말하지 못한 경험이 잠시 표면에 올라오는 곳",
+    body: "wayv는 실패를 해결책으로 바꾸지 않습니다. 먼저 조용히 놓일 수 있는 자리를 만듭니다."
+  },
+  {
+    eyebrow: "No. ii — Quiet Paper",
+    title: "남은 자리에 여백을 둡니다",
+    body: "좋은 답을 찾기보다, 말할 수 있게 된 상태를 먼저 지킵니다."
+  },
+  {
+    eyebrow: "No. iii — Outline",
+    title: "다른 파도를 보고 내 안의 윤곽을 봅니다",
+    body: "분석이나 진단이 아니라, 설명되지 않은 채로 잠시 머무는 가장자리의 결입니다."
+  },
+  {
+    eyebrow: "No. iv — Quiet Reactions",
+    title: "반응은 점수가 아니라 결입니다",
+    body: "숫자와 순위 대신, 조용한 문장과 사적인 잔상으로 남깁니다."
+  },
+  {
+    eyebrow: "No. v — The Flow",
+    title: "파도는 곁을 지나가게 둡니다",
+    body: "이제 몇 가지 짧은 질문으로 처음 만날 파도의 온도를 맞춰볼게요."
+  }
+];
+
 type OnboardingFormProps = {
   initialQuestions: OnboardingQuestion[];
   nextPath: string;
@@ -49,6 +77,7 @@ export function OnboardingForm({
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [stepIndex, setStepIndex] = useState(0);
+  const [tutorialIndex, setTutorialIndex] = useState(previewMode ? tutorialSlides.length : 0);
 
   const activeQuestions = useMemo(() => {
     const normalized = Object.entries(answers).map(([questionKey, value]) => ({
@@ -117,6 +146,47 @@ export function OnboardingForm({
   }
 
   const selectedValue = answers[currentQuestion.key];
+  const showTutorial = tutorialIndex < tutorialSlides.length;
+  const tutorial = tutorialSlides[Math.min(tutorialIndex, tutorialSlides.length - 1)];
+
+  if (showTutorial) {
+    return (
+      <section className="mt-6 overflow-hidden rounded-[2.5rem] border border-white/70 bg-[#fffaf0]/88 p-5 shadow-[0_30px_100px_rgba(54,64,54,0.16)] backdrop-blur md:p-8">
+        <div className="min-h-[32rem] rounded-[2rem] bg-[linear-gradient(135deg,#fbf4e9_0%,#f1c5b6_48%,#4c86c1_100%)] p-6 text-[#2e2620] md:p-10">
+          <div className="flex h-full min-h-[28rem] flex-col justify-between">
+            <div>
+              <p className="font-serif text-sm italic tracking-[0.22em] text-[#6f6255]">
+                {tutorial.eyebrow}
+              </p>
+              <h2 className="mt-10 max-w-2xl font-serif text-4xl font-light leading-tight text-[#241d18] md:text-6xl">
+                {tutorial.title}
+              </h2>
+              <p className="mt-8 max-w-xl text-base leading-8 text-[#51483f]">{tutorial.body}</p>
+            </div>
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex gap-2">
+                {tutorialSlides.map((slide, index) => (
+                  <span
+                    key={slide.eyebrow}
+                    className={`h-2 rounded-full transition-all ${
+                      index === tutorialIndex ? "w-8 bg-[#2e2620]" : "w-2 bg-[#2e2620]/30"
+                    }`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setTutorialIndex((current) => current + 1)}
+                className="rounded-full bg-[#17241f] px-6 py-3 text-sm font-medium text-[#fffaf0] shadow-[0_14px_30px_rgba(23,36,31,0.18)] transition hover:bg-[#0f1c17]"
+              >
+                {tutorialIndex < tutorialSlides.length - 1 ? "다음으로" : "질문 시작하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mt-6 overflow-hidden rounded-[2.5rem] border border-white/70 bg-[#fffaf0]/88 p-5 shadow-[0_30px_100px_rgba(54,64,54,0.16)] backdrop-blur md:p-8">

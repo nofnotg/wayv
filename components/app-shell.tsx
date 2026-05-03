@@ -163,7 +163,7 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
                 </Link>
                 <Link
                   href="/auth/sign-in"
-                  className="rounded-full bg-[#22352c] px-4 py-2 text-[#fffaf0] shadow-[0_10px_24px_rgba(34,53,44,0.18)] transition hover:bg-[#18271f]"
+                  className="rounded-full bg-[#22352c] px-4 py-2 !text-[#fffaf0] shadow-[0_10px_24px_rgba(34,53,44,0.18)] transition hover:bg-[#18271f]"
                 >
                   {systemCopy.navigation.signIn}
                 </Link>
