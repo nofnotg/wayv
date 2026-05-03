@@ -8,9 +8,10 @@ import { SectionCard } from "@/components/section-card";
 import { SetupBanner } from "@/components/setup-banner";
 import { StatusChip } from "@/components/status-chip";
 import { WaveCard } from "@/features/feed/wave-card";
+import { QuietResonanceLanding } from "@/features/landing/quiet-resonance-landing";
 import { systemCopy } from "@/lib/copy/system-copy";
 import { isApprovedViewer } from "@/lib/services/beta-access-guard-service";
-import { buildHomeFeed, getLoggedOutHomeCopy } from "@/lib/services/feed-service";
+import { buildHomeFeed } from "@/lib/services/feed-service";
 import { getStoredSeedProfile } from "@/lib/services/onboarding-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
@@ -19,32 +20,11 @@ export default async function HomePage() {
   const canUseProduct = isApprovedViewer(viewer);
 
   if (!viewer) {
-    const copy = getLoggedOutHomeCopy();
-
     return (
-      <div className="grid gap-6">
+      <>
         <SetupBanner />
-        <SectionCard className="p-8">
-          <PageHeader title={copy.title} description={copy.description} />
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={"/beta/apply" as Route}
-              className="rounded-full border border-slate-300 px-5 py-3 text-sm text-slate-700"
-            >
-              {"\ubca0\ud0c0 \uc2e0\uccad"}
-            </Link>
-            <Link
-              href="/auth/sign-in"
-              className="rounded-full bg-[#17241f] px-5 py-3 text-sm text-[#fffaf0] shadow-[0_14px_30px_rgba(23,36,31,0.18)]"
-            >
-              {systemCopy.home.startLink}
-            </Link>
-            <StatusChip label={systemCopy.home.statusChips.resonance} tone="quiet" />
-            <StatusChip label={systemCopy.home.statusChips.restMode} tone="quiet" />
-            <StatusChip label={systemCopy.home.statusChips.mobileReady} tone="quiet" />
-          </div>
-        </SectionCard>
-      </div>
+        <QuietResonanceLanding />
+      </>
     );
   }
 

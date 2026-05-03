@@ -8,7 +8,6 @@ globalThis.React = React;
 const getViewerContext = vi.fn();
 const getStoredSeedProfile = vi.fn();
 const buildHomeFeed = vi.fn();
-const getLoggedOutHomeCopy = vi.fn();
 
 vi.mock("@/lib/services/viewer-service", () => ({
   getViewerContext
@@ -19,8 +18,7 @@ vi.mock("@/lib/services/onboarding-service", () => ({
 }));
 
 vi.mock("@/lib/services/feed-service", () => ({
-  buildHomeFeed,
-  getLoggedOutHomeCopy
+  buildHomeFeed
 }));
 
 vi.mock("@/components/layout/page-header", () => ({
@@ -73,16 +71,15 @@ describe("home page", () => {
 
   it("shows beta apply entry for logged-out users", async () => {
     getViewerContext.mockResolvedValue(null);
-    getLoggedOutHomeCopy.mockReturnValue({
-      title: "logged-out-title",
-      description: "logged-out-description"
-    });
 
     const Page = (await import("../../app/page")).default;
     const html = renderToStaticMarkup(await Page());
 
-    expect(html).toContain("logged-out-title");
+    expect(html).toContain("말하지 못한 경험이");
+    expect(html).toContain("조용히 시작하기");
     expect(html).toContain("\ubca0\ud0c0 \uc2e0\uccad");
+    expect(html).toContain("/auth/sign-in");
+    expect(html).toContain("/beta/apply");
   });
 
   it("shows explicit apply-only surface for logged-in users without an application", async () => {
