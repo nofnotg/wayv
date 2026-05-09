@@ -14,6 +14,7 @@ import { getOperatorAccess } from "@/lib/services/operator-access-service";
 import {
   operatorPasswordSignInSchema,
   passwordSignInSchema,
+  passwordSignUpSchema,
   signInRequestSchema,
   socialSignInSchema
 } from "@/lib/validation/schemas";
@@ -180,6 +181,57 @@ export async function passwordSignInAction(formData: FormData) {
   });
 
   redirect(sanitizeNextPath(parsed.data.next) as Route);
+}
+
+export async function passwordSignUpAction(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/auth/sign-up?error=missing-env" as Route);
+  }
+
+  const parsed = passwordSignUpSchema.safeParse({
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+    passwordConfirm: String(formData.get("passwordConfirm") ?? ""),
+    next: String(formData.get("next") ?? "/beta/apply")
+  });
+
+  if (!parsed.success) {
+    redirect("/auth/sign-up?error=invalid-sign-up" as Route);
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const redirectTo = new URL("/auth/callback", getAppUrl());
+  redirectTo.searchParams.set("next", sanitizeNextPath(parsed.data.next));
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    options: {
+      emailRedirectTo: redirectTo.toString()
+    }
+  });
+
+  if (error || !data.user?.id) {
+    redirect("/auth/sign-up?error=sign-up-failed" as Route);
+  }
+
+  await recordProductEventSafe({
+    userId: data.user.id,
+    eventKey: "signup_started",
+    targetType: "auth",
+    targetId: data.user.id,
+    metadata: {
+      method: "password",
+      next: sanitizeNextPath(parsed.data.next)
+    }
+  });
+
+  if (data.session) {
+    redirect(sanitizeNextPath(parsed.data.next) as Route);
+  }
+
+  redirect(
+    `/auth/sign-in?status=check-email&next=${encodeURIComponent(sanitizeNextPath(parsed.data.next))}`
+  );
 }
 
 export async function socialSignInAction(formData: FormData) {

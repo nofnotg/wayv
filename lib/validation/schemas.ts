@@ -46,6 +46,15 @@ export const passwordSignInSchema = emailSchema.extend({
   next: nextPathSchema.optional()
 });
 
+export const passwordSignUpSchema = emailSchema.extend({
+  password: z.string().min(8),
+  passwordConfirm: z.string().min(8),
+  next: nextPathSchema.optional()
+}).refine((value) => value.password === value.passwordConfirm, {
+  message: "passwords must match",
+  path: ["passwordConfirm"]
+});
+
 export const operatorPasswordSignInSchema = emailSchema.extend({
   password: z.string().min(1),
   next: nextPathSchema.optional()

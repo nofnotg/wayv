@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 
 import {
   passwordSignInAction,
@@ -94,7 +95,10 @@ export function SignInForm({ nextPath }: SignInFormProps) {
 
       <p className="text-center text-sm text-[#8b8b8b]">
         계정이 없으시다면?{" "}
-        <Link href="/beta/apply" className="font-bold text-[#171717] hover:underline">
+        <Link
+          href={`/auth/sign-up?next=${encodeURIComponent(nextPath || "/beta/apply")}` as Route}
+          className="font-bold text-[#171717] hover:underline"
+        >
           회원가입
         </Link>
       </p>

@@ -10,6 +10,7 @@ import {
   notificationDeviceSchema,
   operatorPlanPreviewSchema,
   passwordSignInSchema,
+  passwordSignUpSchema,
   privateResonanceTraceSchema,
   signInRequestSchema,
   socialSignInSchema,
@@ -39,6 +40,22 @@ describe("schemas and env helpers", () => {
         next: "/"
       }).password
     ).toBe("secret");
+
+    expect(
+      passwordSignUpSchema.parse({
+        email: "hello@wayv.app",
+        password: "secret123",
+        passwordConfirm: "secret123",
+        next: "/beta/apply"
+      }).next
+    ).toBe("/beta/apply");
+    expect(() =>
+      passwordSignUpSchema.parse({
+        email: "hello@wayv.app",
+        password: "secret123",
+        passwordConfirm: "different"
+      })
+    ).toThrow();
   });
 
   it("validates social auth and operator plan preview inputs", () => {
