@@ -12,8 +12,8 @@ export default async function BetaApplyPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="\ubca0\ud0c0 \uc2e0\uccad"
-        description="\uba3c\uc800 wayv\ub97c \uc5b4\ub5bb\uac8c \uc4f0\uace0 \uc2f6\uc740\uc9c0 \ub0a8\uaca8 \uc8fc\uc138\uc694. \uc2b9\uc778 \uc804\uae4c\uc9c0\ub294 \ub300\uae30 \ud654\uba74\ub9cc \ubcf4\uc774\uace0, \uc2b9\uc778 \ud6c4\uc5d0 \uc628\ubcf4\ub529\uacfc \ud53c\ub4dc\uac00 \uc5f4\ub824\uc694."
+        title="베타 신청"
+        description="먼저 wayv를 어떻게 쓰고 싶은지 남겨 주세요. 승인 전까지는 대기 화면만 보이고, 승인 후에 온보딩과 피드가 열려요."
       />
 
       {viewer?.betaAccess ? <BetaAccessStateCard access={viewer.betaAccess} /> : null}
@@ -21,8 +21,8 @@ export default async function BetaApplyPage() {
       <SectionCard
         title={
           viewer?.betaAccess
-            ? "\uc2e0\uccad \uba54\ubaa8 \ub2e4\uc2dc \ub0a8\uae30\uae30"
-            : "\uc2e0\uccad \uba54\ubaa8 \ub0a8\uae30\uae30"
+            ? "신청 메모 다시 남기기"
+            : "신청 메모 남기기"
         }
       >
         <BetaApplicationForm
@@ -35,15 +35,14 @@ export default async function BetaApplyPage() {
       {!viewer ? (
         <SectionCard>
           <p className="text-sm leading-7 text-slate-700">
-            {
-              "\uc774\ubbf8 \uacc4\uc815\uc774 \uc788\ub2e4\uba74 \ub85c\uadf8\uc778 \ud6c4 \uc2e0\uccad \uc774\ub825\uc744 \uad00\ub9ac\ud558\ub294 \uac83\ub3c4 \uac00\ub2a5\ud574\uc694. \ub85c\uadf8\uc778 \uc0c1\ud0dc\uc5d0\uc11c\ub294 \uc2e0\uccad \ub0b4\uc5ed\uacfc \ud604\uc7ac \uc0c1\ud0dc\ub97c \uacc4\uc18d \ud655\uc778\ud560 \uc218 \uc788\uc5b4\uc694."
-            }
+            이미 계정이 있다면 로그인 후 신청 이력을 관리하는 것도 가능해요. 로그인
+            상태에서는 신청 내역과 현재 상태를 계속 확인할 수 있어요.
           </p>
           <Link
             href="/auth/sign-in?next=/beta/apply"
             className="mt-4 inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700"
           >
-            {"\ub85c\uadf8\uc778\ud558\uace0 \uc2e0\uccad \uc774\uc5b4\uac00\uae30"}
+            로그인하고 신청 이어가기
           </Link>
         </SectionCard>
       ) : null}

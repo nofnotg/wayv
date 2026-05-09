@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type BetaApplicationFormProps = {
@@ -30,7 +30,7 @@ export function BetaApplicationForm({
   const [applicationNote, setApplicationNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
   const helperCopy =
     currentStatus === "approved"
@@ -41,8 +41,13 @@ export function BetaApplicationForm({
           ? "지금은 접근이 멈춘 상태예요. 운영 확인이 필요하다면 메모를 다시 남겨 주세요."
           : "왜 wayv를 써 보고 싶은지, 지금 어떤 상황인지 차분하게 남겨 주세요.";
 
-  const submit = () => {
-    startTransition(async () => {
+  const submit = async () => {
+    if (pending) {
+      return;
+    }
+
+    setPending(true);
+    try {
       setError(null);
       setMessage(null);
 
@@ -61,9 +66,14 @@ export function BetaApplicationForm({
       const data = (await response.json().catch(() => null)) as BetaApplyResponse | null;
 
       if (!response.ok) {
+        const fallbackError =
+          data?.error === "TypeError: fetch failed"
+            ? "지금은 서버 연결을 확인할 수 없어요. 잠시 후 다시 시도해 주세요."
+            : "요청 내용을 다시 확인해 주세요. 메모는 8자 이상으로 남겨야 해요.";
+
         setError(
           data?.moderation?.guidance?.description ??
-            "요청 내용을 다시 확인해 주세요. 메모는 8자 이상으로 남겨야 해요."
+            fallbackError
         );
         return;
       }
@@ -77,7 +87,9 @@ export function BetaApplicationForm({
       );
       setApplicationNote("");
       router.refresh();
-    });
+    } finally {
+      setPending(false);
+    }
   };
 
   return (

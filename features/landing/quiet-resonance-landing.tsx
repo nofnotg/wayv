@@ -1,6 +1,3 @@
-import type { Route } from "next";
-import Link from "next/link";
-
 import { LandingIntro } from "@/features/landing/landing-intro";
 
 export function QuietResonanceLanding() {
@@ -41,13 +38,13 @@ export function QuietResonanceLanding() {
             당신의 경험이 조용히 놓일 수 있는, 얇은 종이 한 장의 자리입니다.
           </p>
           <div className="wayv-landing-actions">
-            <Link href={"/auth/sign-in?next=/onboarding" as Route} className="wayv-landing-primary">
+            <a href="/auth/sign-in?next=/onboarding" className="wayv-landing-primary">
               조용히 시작하기
               <span aria-hidden="true">→</span>
-            </Link>
-            <Link href={"/beta/apply" as Route} className="wayv-landing-ghost">
+            </a>
+            <a href="/beta/apply" className="wayv-landing-ghost">
               베타 신청
-            </Link>
+            </a>
           </div>
         </div>
 

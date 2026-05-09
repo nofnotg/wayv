@@ -155,18 +155,18 @@ export async function AppShell({ children, viewer, notificationSummary }: AppShe
               </>
             ) : (
               <>
-                <Link
-                  href={"/beta/apply" as Route}
+                <a
+                  href="/beta/apply"
                   className="rounded-full px-3 py-2 transition hover:bg-[#25352d]/7 hover:text-[#1d2b24]"
                 >
                   {"\ubca0\ud0c0 \uc2e0\uccad"}
-                </Link>
-                <Link
+                </a>
+                <a
                   href="/auth/sign-in"
                   className="rounded-full bg-[#22352c] px-4 py-2 !text-[#fffaf0] shadow-[0_10px_24px_rgba(34,53,44,0.18)] transition hover:bg-[#18271f]"
                 >
                   {systemCopy.navigation.signIn}
-                </Link>
+                </a>
               </>
             )}
           </nav>

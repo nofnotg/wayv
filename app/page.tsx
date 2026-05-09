@@ -33,7 +33,7 @@ export default async function HomePage() {
       <div className="grid gap-6">
         <PageHeader
           title={`\uc548\ub155\ud558\uc138\uc694, ${viewer.profile.nickname}`}
-          description="\ub85c\uadf8\uc778\uc740 \uc644\ub8cc\ub418\uc5c8\uc9c0\ub9cc \uc544\uc9c1 \ubca0\ud0c0 \uc2e0\uccad\uc740 \uc81c\ucd9c\ub418\uc9c0 \uc54a\uc558\uc5b4\uc694. \uc2e0\uccad\uc744 \ub0a8\uae30\uba74 \uac80\ud1a0 \ud6c4 \uc2b9\uc778 \uc5ec\ubd80\uac00 \uc548\ub0b4\ub3fc\uc694."
+          description="로그인은 완료되었지만 아직 베타 신청은 제출되지 않았어요. 신청을 남기면 검토 후 승인 여부가 안내돼요."
         />
         <SectionCard className="border-cyan-100 bg-cyan-50/80 p-8">
           <h2 className="font-serif text-3xl tracking-tight text-slate-950">
@@ -62,7 +62,7 @@ export default async function HomePage() {
       <div className="grid gap-6">
         <PageHeader
           title={`\uc548\ub155\ud558\uc138\uc694, ${viewer.profile.nickname}`}
-          description="\uc2b9\uc778 \uc804\uae4c\uc9c0\ub294 \ub300\uae30 \uc0c1\ud0dc \ud654\uba74\uc5d0\uc11c \uc2e0\uccad \uacb0\uacfc\ub9cc \ud655\uc778\ud560 \uc218 \uc788\uc5b4\uc694. \uc2b9\uc778\ub418\uba74 \uc628\ubcf4\ub529\uacfc \ud53c\ub4dc \uc774\uc6a9\uc774 \uc5f4\ub824\uc694."
+          description="승인 전까지는 대기 상태 화면에서 신청 결과만 확인할 수 있어요. 승인되면 온보딩과 피드 이용이 열려요."
         />
         <BetaAccessStateCard access={viewer.betaAccess} />
       </div>
@@ -84,7 +84,7 @@ export default async function HomePage() {
     <div className="grid gap-6">
       <PageHeader
         title={`\uc548\ub155\ud558\uc138\uc694, ${viewer.profile.nickname}`}
-        description="\uc624\ub298 \ub0a8\uc544 \uc788\ub294 \ud30c\ub3c4\ub4e4\uc744 \uc870\uc6a9\ud788 \ud3bc\uccd0\ub450\uc5c8\uc5b4\uc694. \ube60\ub974\uac8c \ud310\ub2e8\ud558\uc9c0 \uc54a\uace0, \uba3c\uc800 \uc5b4\ub514\uc5d0 \uc2dc\uc120\uc774 \uba38\ubb34\ub294\uc9c0\ub9cc \ubcf4\uc544\ub3c4 \uad1c\ucc2e\uc544\uc694."
+        description="오늘 남아 있는 파도들을 조용히 펼쳐두었어요. 빠르게 판단하지 않고, 먼저 어디에 시선이 머무는지만 보아도 괜찮아요."
       />
 
       {viewer.restMode?.enabled ? (

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   title: "wayv",
   description: systemCopy.brand.description,
   icons: {
-    icon: "/favicon.ico"
+    icon: "/favicon.svg"
   }
 };
 
