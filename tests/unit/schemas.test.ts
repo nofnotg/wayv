@@ -9,6 +9,7 @@ import { productPlanValues } from "../../lib/domain/types";
 import {
   notificationDeviceSchema,
   operatorPlanPreviewSchema,
+  passwordSignInSchema,
   privateResonanceTraceSchema,
   signInRequestSchema,
   socialSignInSchema,
@@ -30,6 +31,14 @@ describe("schemas and env helpers", () => {
       email: "hello@wayv.app",
       next: "/onboarding"
     });
+
+    expect(
+      passwordSignInSchema.parse({
+        email: "hello@wayv.app",
+        password: "secret",
+        next: "/"
+      }).password
+    ).toBe("secret");
   });
 
   it("validates social auth and operator plan preview inputs", () => {

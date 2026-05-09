@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
 import { SetupBanner } from "@/components/setup-banner";
 import { MagicLinkSessionComplete } from "@/features/auth/magic-link-session-complete";
@@ -18,8 +17,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   return (
     <div className="grid gap-6">
       <SetupBanner />
-      <SectionCard className="mx-auto w-full max-w-xl p-8">
-        <PageHeader title={systemCopy.auth.title} description={systemCopy.auth.description} />
+      <SectionCard className="mx-auto w-full max-w-md rounded-[1.75rem] bg-white/92 p-8">
+        <div className="sr-only">
+          <h1>{systemCopy.auth.title}</h1>
+          <p>{systemCopy.auth.description}</p>
+        </div>
         <MagicLinkSessionComplete nextPath={nextPath} />
         {status === "check-email" ? (
           <p className="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">

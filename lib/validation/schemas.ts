@@ -41,6 +41,11 @@ export const signInRequestSchema = emailSchema.extend({
   next: nextPathSchema.optional()
 });
 
+export const passwordSignInSchema = emailSchema.extend({
+  password: z.string().min(1),
+  next: nextPathSchema.optional()
+});
+
 export const operatorPasswordSignInSchema = emailSchema.extend({
   password: z.string().min(1),
   next: nextPathSchema.optional()
