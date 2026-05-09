@@ -28,6 +28,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             {systemCopy.auth.sent}
           </p>
         ) : null}
+        {status === "signup-pending" ? (
+          <p className="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-900">
+            회원가입이 접수됐습니다. 운영자 승인 후 wayv를 사용할 수 있어요.
+          </p>
+        ) : null}
         {error ? (
           <p className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}

@@ -11,53 +11,21 @@ import {
   sanitizeNextPath
 } from "@/lib/supabase/env";
 import { getOperatorAccess } from "@/lib/services/operator-access-service";
+import { submitBetaApplication } from "@/lib/services/beta-access-service";
 import {
   operatorPasswordSignInSchema,
   passwordSignInSchema,
   passwordSignUpSchema,
-  signInRequestSchema,
   socialSignInSchema
 } from "@/lib/validation/schemas";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 
+const PASSWORD_SIGNUP_BETA_NOTE =
+  "회원가입으로 생성된 베타 승인 대기 요청입니다. 운영자 승인 후 사용 가능합니다.";
+
 export async function requestSignInLink(input: { email: string; next?: string }) {
-  if (!hasSupabaseEnv()) {
-    throw new Error("missing-env");
-  }
-
-  const parsed = signInRequestSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new Error("invalid-email");
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const redirectTo = new URL("/auth/callback", getAppUrl());
-  redirectTo.searchParams.set("next", sanitizeNextPath(parsed.data.next));
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data.email,
-    options: {
-      emailRedirectTo: redirectTo.toString()
-    }
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  await recordProductEventSafe({
-    eventKey: "signup_started",
-    targetType: "auth",
-    metadata: {
-      next: sanitizeNextPath(parsed.data.next)
-    }
-  });
-
-  return {
-    ok: true as const,
-    email: parsed.data.email,
-    next: sanitizeNextPath(parsed.data.next)
-  };
+  void input;
+  throw new Error("magic-link-disabled");
 }
 
 export async function exchangeAuthCodeForSession(code: string) {
@@ -132,17 +100,8 @@ export async function signOutCurrentSession() {
 }
 
 export async function requestSignInLinkAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "");
-  const next = String(formData.get("next") ?? "/");
-
-  try {
-    await requestSignInLink({ email, next });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "request-failed";
-    redirect(`/auth/sign-in?error=${encodeURIComponent(message)}`);
-  }
-
-  redirect("/auth/sign-in?status=check-email");
+  void formData;
+  redirect("/auth/sign-in?error=magic-link-disabled");
 }
 
 export async function passwordSignInAction(formData: FormData) {
@@ -225,12 +184,19 @@ export async function passwordSignUpAction(formData: FormData) {
     }
   });
 
+  await submitBetaApplication({
+    email: parsed.data.email,
+    applicantName: null,
+    applicationNote: PASSWORD_SIGNUP_BETA_NOTE,
+    userId: data.user.id
+  });
+
   if (data.session) {
-    redirect(sanitizeNextPath(parsed.data.next) as Route);
+    redirect("/beta/apply" as Route);
   }
 
   redirect(
-    `/auth/sign-in?status=check-email&next=${encodeURIComponent(sanitizeNextPath(parsed.data.next))}`
+    `/auth/sign-in?status=signup-pending&next=${encodeURIComponent("/beta/apply")}`
   );
 }
 
