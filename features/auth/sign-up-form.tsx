@@ -21,7 +21,7 @@ export function SignUpForm({ nextPath }: SignUpFormProps) {
           required
           autoComplete="email"
           className="h-11 rounded-md border border-[#d8d8d8] bg-white px-4 text-sm text-[#171717] outline-none transition placeholder:text-[#a5abb3] focus:border-[#1f1f1f] focus:ring-2 focus:ring-[#1f1f1f]/10"
-          placeholder="이메일 아이디를 입력해 주세요"
+          placeholder="이메일을 입력해 주세요"
         />
       </label>
 
@@ -53,13 +53,13 @@ export function SignUpForm({ nextPath }: SignUpFormProps) {
 
       <SubmitButton
         pendingLabel="회원가입 중..."
-        className="mt-4 h-11 w-full rounded-md !bg-[#1f1f1f] text-[15px] font-bold !text-white hover:!bg-[#111111]"
+        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-md !bg-[#1f1f1f] text-[15px] font-bold !text-white hover:!bg-[#111111]"
       >
         회원가입
       </SubmitButton>
 
       <p className="text-center text-sm text-[#8b8b8b]">
-        이미 계정이 있으시다면?{" "}
+        이미 계정이 있으시다면{" "}
         <Link
           href={`/auth/sign-in?next=${encodeURIComponent(nextPath || "/beta/apply")}` as Route}
           className="font-bold text-[#171717] hover:underline"
@@ -69,8 +69,7 @@ export function SignUpForm({ nextPath }: SignUpFormProps) {
       </p>
 
       <p className="rounded-2xl border border-[#e4ded4] bg-[#fffaf0]/70 p-4 text-xs leading-6 text-[#6f756d]">
-        회원가입은 계정 생성만 담당합니다. 실제 제품 사용은 기존처럼 베타 신청 후 운영자
-        승인 상태에서 열립니다.
+        회원가입은 계정 생성과 베타 신청을 함께 접수합니다. 실제 사용은 운영자 승인 후 열립니다.
       </p>
     </form>
   );

@@ -14,7 +14,7 @@ type SignInFormProps = {
 
 function GoogleLogo() {
   return (
-    <svg aria-hidden="true" className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -35,6 +35,17 @@ function GoogleLogo() {
   );
 }
 
+function KakaoLogo() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+      <path
+        fill="#191600"
+        d="M12 3.3c-5.2 0-9.4 3.3-9.4 7.4 0 2.6 1.8 4.9 4.4 6.2l-.7 2.6c-.1.4.3.7.6.5l3.2-2.1c.6.1 1.2.1 1.9.1 5.2 0 9.4-3.3 9.4-7.4S17.2 3.3 12 3.3Z"
+      />
+    </svg>
+  );
+}
+
 export function SignInForm({ nextPath }: SignInFormProps) {
   return (
     <div className="mx-auto grid w-full max-w-[340px] gap-6">
@@ -48,7 +59,7 @@ export function SignInForm({ nextPath }: SignInFormProps) {
             required
             autoComplete="email"
             className="h-11 rounded-md border border-[#d8d8d8] bg-white px-4 text-sm text-[#171717] outline-none transition placeholder:text-[#a5abb3] focus:border-[#1f1f1f] focus:ring-2 focus:ring-[#1f1f1f]/10"
-            placeholder="이메일 아이디를 입력해 주세요"
+            placeholder="이메일을 입력해 주세요"
           />
         </label>
 
@@ -68,12 +79,12 @@ export function SignInForm({ nextPath }: SignInFormProps) {
           href="mailto:nofnotg@gmail.com"
           className="w-fit text-sm font-semibold text-[#171717] underline-offset-4 hover:underline"
         >
-          비밀번호 찾기 문의
+          비밀번호 찾기
         </a>
 
         <SubmitButton
           pendingLabel="로그인 중..."
-          className="mt-4 h-11 w-full rounded-md !bg-[#1f1f1f] text-[15px] font-bold !text-white hover:!bg-[#111111]"
+          className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-md !bg-[#1f1f1f] text-[15px] font-bold !text-white hover:!bg-[#111111]"
         >
           로그인
         </SubmitButton>
@@ -91,10 +102,10 @@ export function SignInForm({ nextPath }: SignInFormProps) {
           <input type="hidden" name="provider" value="google" />
           <SubmitButton
             pendingLabel="Google 로그인 중..."
-            className="h-11 w-full rounded-md border border-[#dddddd] !bg-white text-[15px] font-semibold !text-[#1f1f1f] hover:!bg-[#f7f7f7]"
+            className="inline-flex h-11 w-full items-center justify-center gap-3 rounded-md border border-[#dddddd] !bg-white px-5 text-[15px] font-semibold !text-[#1f1f1f] hover:!bg-[#f7f7f7]"
           >
             <GoogleLogo />
-            구글 계정으로 로그인
+            <span>구글 계정으로 로그인</span>
           </SubmitButton>
         </form>
 
@@ -103,18 +114,16 @@ export function SignInForm({ nextPath }: SignInFormProps) {
           <input type="hidden" name="provider" value="kakao" />
           <button
             type="submit"
-            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[#fee500] px-5 text-[15px] font-bold text-[#191600] transition hover:bg-[#f7dc00]"
+            className="inline-flex h-11 w-full items-center justify-center gap-3 rounded-md bg-[#fee500] px-5 text-[15px] font-bold text-[#191600] transition hover:bg-[#f7dc00]"
           >
-            <span aria-hidden="true" className="mr-2 text-lg leading-none">
-              ●
-            </span>
-            카카오 계정으로 로그인
+            <KakaoLogo />
+            <span>카카오 계정으로 로그인</span>
           </button>
         </form>
       </div>
 
       <p className="text-center text-sm text-[#8b8b8b]">
-        계정이 없으시다면?{" "}
+        계정이 없으시다면{" "}
         <Link
           href={`/auth/sign-up?next=${encodeURIComponent(nextPath || "/beta/apply")}` as Route}
           className="font-bold text-[#171717] hover:underline"

@@ -1,4 +1,5 @@
-import { SectionCard } from "@/components/section-card";
+import Link from "next/link";
+
 import { SetupBanner } from "@/components/setup-banner";
 import { SignUpForm } from "@/features/auth/sign-up-form";
 
@@ -18,22 +19,34 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const error = typeof params.error === "string" ? params.error : null;
 
   return (
-    <div className="grid gap-6">
+    <div className="fixed inset-0 z-[7000] overflow-y-auto bg-[rgba(20,16,12,0.55)] px-5 py-8 backdrop-blur-[14px] backdrop-saturate-75">
       <SetupBanner />
-      <SectionCard className="mx-auto w-full max-w-md rounded-[1.75rem] bg-white/92 p-8">
-        <div className="mb-7 text-center">
-          <h1 className="font-serif text-3xl tracking-tight text-[#18251f]">회원가입</h1>
-          <p className="mt-2 text-sm leading-6 text-[#657267]">
-            먼저 계정을 만들고, 베타 신청 후 승인되면 wayv를 사용할 수 있어요.
-          </p>
-        </div>
-        {error ? (
-          <p className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {errorCopy[error] ?? error}
-          </p>
-        ) : null}
-        <SignUpForm nextPath={nextPath} />
-      </SectionCard>
+      <div className="flex min-h-full items-center justify-center">
+        <section className="relative w-full max-w-[420px] rounded-[2rem] border border-[#ebe1d0] bg-[#faf4ec] px-6 py-8 shadow-[0_18px_70px_rgba(20,16,12,0.22)] md:px-9 md:py-10">
+          <Link
+            href="/"
+            aria-label="회원가입 닫기"
+            className="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg text-[#9d9283] transition hover:bg-[#ebe1d0] hover:text-[#5a4f44]"
+          >
+            ×
+          </Link>
+
+          <div className="mb-7 text-center">
+            <h1 className="font-serif text-3xl tracking-tight text-[#18251f]">회원가입</h1>
+            <p className="mt-2 text-sm leading-6 text-[#657267]">
+              계정을 만들고 베타 신청을 접수합니다. 사용은 운영자 승인 후 열립니다.
+            </p>
+          </div>
+
+          {error ? (
+            <p className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {errorCopy[error] ?? error}
+            </p>
+          ) : null}
+
+          <SignUpForm nextPath={nextPath} />
+        </section>
+      </div>
     </div>
   );
 }
