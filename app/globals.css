@@ -176,6 +176,30 @@ a {
   color: #f8d9cc;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .wayv-intro-leaving {
+    animation-duration: 0.2s;
+  }
+
+  .wayv-intro-wordmark,
+  .wayv-intro-logo p,
+  .wayv-intro-progress,
+  .wayv-intro-skip {
+    animation: none;
+  }
+
+  .wayv-intro-wordmark,
+  .wayv-intro-logo p,
+  .wayv-intro-skip {
+    opacity: 1;
+    transform: none;
+  }
+
+  .wayv-intro-progress {
+    width: 100%;
+  }
+}
+
 .wayv-landing-hero {
   position: relative;
   display: grid;
