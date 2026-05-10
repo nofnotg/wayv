@@ -1,0 +1,46 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { buildApprovedViewerApiGuard } from "@/lib/services/beta-access-guard-service";
+import { submitBetaFeedback } from "@/lib/services/beta-feedback-service";
+import { getViewerContext } from "@/lib/services/viewer-service";
+
+export async function POST(request: NextRequest) {
+  const payload = await request.json().catch(() => null);
+  if (!payload || typeof payload !== "object") {
+    return NextResponse.json({ error: "invalid-feedback" }, { status: 400 });
+  }
+
+  try {
+    const viewer = await getViewerContext();
+    const guard = buildApprovedViewerApiGuard(viewer);
+    if (guard) {
+      return guard;
+    }
+    const approvedViewer = viewer!;
+    const result = await submitBetaFeedback(
+      payload as {
+        category: "bug" | "confusing" | "suggestion" | "emotional_discomfort" | "exit_reason";
+        message: string;
+        pagePath?: string | null;
+        contactEmail?: string | null;
+      },
+      approvedViewer.userId
+    );
+
+    return NextResponse.json(
+      { feedback: result.feedback, moderation: result.moderation ?? null },
+      { status: 201 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "feedback-submit-failed";
+    try {
+      const parsed = JSON.parse(message) as { error?: string; moderation?: unknown };
+      if (parsed.error) {
+        return NextResponse.json(parsed, { status: 400 });
+      }
+    } catch {
+      // ignore malformed non-JSON errors
+    }
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}

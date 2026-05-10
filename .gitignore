@@ -9,7 +9,10 @@ node_modules/
 .next/
 dist/
 build/
+tsconfig.tsbuildinfo
 
 .env
 .env.local
 .env.*.local
+
+supabase/.temp/
