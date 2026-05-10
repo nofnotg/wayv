@@ -15,7 +15,13 @@ import { buildHomeFeed } from "@/lib/services/feed-service";
 import { getStoredSeedProfile } from "@/lib/services/onboarding-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = (await searchParams) ?? {};
+  const skipIntro = params.intro === "skip";
   const viewer = await getViewerContext();
   const canUseProduct = isApprovedViewer(viewer);
 
@@ -23,7 +29,7 @@ export default async function HomePage() {
     return (
       <>
         <SetupBanner />
-        <QuietResonanceLanding />
+        <QuietResonanceLanding skipIntro={skipIntro} />
       </>
     );
   }

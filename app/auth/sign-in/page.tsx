@@ -23,12 +23,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const error = typeof params.error === "string" ? params.error : null;
 
   return (
-    <div className="fixed inset-0 z-[7000] overflow-y-auto bg-[rgba(20,16,12,0.55)] px-5 py-8 backdrop-blur-[14px] backdrop-saturate-75">
+    <div className="wayv-auth-overlay">
       <SetupBanner />
       <div className="flex min-h-full items-center justify-center">
-        <section className="relative w-full max-w-[420px] rounded-[2rem] border border-[#ebe1d0] bg-[#faf4ec] px-6 py-8 shadow-[0_18px_70px_rgba(20,16,12,0.22)] md:px-9 md:py-10">
+        <section className="wayv-auth-card">
           <Link
-            href="/"
+            href="/?intro=skip"
             aria-label="로그인 닫기"
             className="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg text-[#9d9283] transition hover:bg-[#ebe1d0] hover:text-[#5a4f44]"
           >

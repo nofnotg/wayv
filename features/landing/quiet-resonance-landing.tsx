@@ -1,9 +1,13 @@
 import { LandingIntro } from "@/features/landing/landing-intro";
 
-export function QuietResonanceLanding() {
+type QuietResonanceLandingProps = {
+  skipIntro?: boolean;
+};
+
+export function QuietResonanceLanding({ skipIntro = false }: QuietResonanceLandingProps) {
   return (
     <div className="wayv-landing">
-      <LandingIntro />
+      <LandingIntro skip={skipIntro} />
       <section className="wayv-landing-hero" aria-labelledby="wayv-landing-title">
         <div className="wayv-landing-paper" />
         <div className="wayv-landing-horizon" aria-hidden="true">

@@ -49,15 +49,23 @@ const INTRO_WAVE_LAYERS = [
   }
 ] as const;
 
-export function LandingIntro() {
+type LandingIntroProps = {
+  skip?: boolean;
+};
+
+export function LandingIntro({ skip = false }: LandingIntroProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   const endedRef = useRef(false);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(!skip);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    if (skip) {
+      return;
+    }
+
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) {
@@ -123,7 +131,7 @@ export function LandingIntro() {
         window.clearTimeout(hideTimerRef.current);
       }
     };
-  }, []);
+  }, [skip]);
 
   const endIntro = () => {
     if (endedRef.current) {

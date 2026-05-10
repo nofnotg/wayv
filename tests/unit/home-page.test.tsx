@@ -73,7 +73,7 @@ describe("home page", () => {
     getViewerContext.mockResolvedValue(null);
 
     const Page = (await import("../../app/page")).default;
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(await Page({}));
 
     expect(html).toContain("말하지 못한 경험이");
     expect(html).toContain("조용히 시작하기");
@@ -90,7 +90,7 @@ describe("home page", () => {
     });
 
     const Page = (await import("../../app/page")).default;
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(await Page({}));
 
     expect(html).toContain("\ubca0\ud0c0 \uc2e0\uccad\uc744 \uba3c\uc800 \ub0a8\uaca8 \uc8fc\uc138\uc694");
     expect(html).toContain("\ubca0\ud0c0 \uc2e0\uccad\ud558\uae30");
@@ -104,7 +104,7 @@ describe("home page", () => {
     });
 
     const Page = (await import("../../app/page")).default;
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(await Page({}));
 
     expect(html).toContain("beta-state:pending");
   });
@@ -118,6 +118,6 @@ describe("home page", () => {
 
     const Page = (await import("../../app/page")).default;
 
-    await expect(Page()).rejects.toThrow("NEXT_REDIRECT");
+    await expect(Page({})).rejects.toThrow("NEXT_REDIRECT");
   });
 });
