@@ -12,6 +12,7 @@ import type {
   ContentGuardrailTargetType,
   WaveComment
 } from "@/lib/domain/types";
+import { COMMENT_MAX_LENGTH } from "@/lib/validation/schemas";
 import { formatDateTime } from "@/lib/utils";
 
 type CommentsPanelProps = {
@@ -20,6 +21,12 @@ type CommentsPanelProps = {
   initialComments: WaveComment[];
   interactionsEnabled: boolean;
 };
+
+const commentLimitHelp =
+  "댓글은 120자까지 남길 수 있어요. 길어진 마음은 당신의 파도로 옮겨도 괜찮아요.";
+const commentAdviceGuidance =
+  "이 말은 조언처럼 닿을 수 있어요. 공감에 가까운 말로 다시 남겨볼까요?";
+const invalidCommentCopy = "짧은 말은 2자 이상 120자 이하로 남겨 주세요.";
 
 export function CommentsPanel({
   postId,
@@ -77,10 +84,12 @@ export function CommentsPanel({
         }
         setError(
           data?.error === "invalid-comment"
-            ? "짧은 말은 2자 이상 220자 이하로 남겨 주세요."
-            : data?.error === "interactions-paused"
-              ? systemCopy.moderation.interactionsPaused
-              : systemCopy.comments.saveError
+            ? invalidCommentCopy
+            : data?.error === "comment-guidance"
+              ? commentAdviceGuidance
+              : data?.error === "interactions-paused"
+                ? systemCopy.moderation.interactionsPaused
+                : systemCopy.comments.saveError
         );
         return;
       }
@@ -89,20 +98,8 @@ export function CommentsPanel({
       setComments(data.comments);
       setBody("");
       setError(null);
-      setNotice(data?.moderation?.guidance?.description ?? null);
-      if (data?.moderation?.action) {
-        setModerationFeedbackState({
-          targetType: data.moderation.targetType,
-          targetId: data.commentId ?? null,
-          action: data.moderation.action,
-          reasons: data.moderation.reasons ?? [],
-          guidanceFamily: data.moderation.guidance?.family ?? null,
-          retryAttempted: false,
-          retrySucceeded: true
-        });
-      } else {
-        setModerationFeedbackState(null);
-      }
+      setNotice(null);
+      setModerationFeedbackState(null);
       router.refresh();
     });
   };
@@ -155,13 +152,15 @@ export function CommentsPanel({
               rows={4}
               value={body}
               onChange={(event) => setBody(event.target.value)}
-              maxLength={220}
+              maxLength={COMMENT_MAX_LENGTH}
               placeholder={systemCopy.comments.placeholder}
               className="w-full rounded-[1.5rem] border border-slate-200 bg-white px-4 py-3 text-sm"
             />
             <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
-              <span>짧고 조용한 말만 남길 수 있어요.</span>
-              <span>{body.length}/220</span>
+              <span>{commentLimitHelp}</span>
+              <span>
+                {body.length}/{COMMENT_MAX_LENGTH}
+              </span>
             </div>
             {error ? <p className="text-sm text-rose-700">{error}</p> : null}
             {notice ? <p className="text-sm text-amber-700">{notice}</p> : null}
@@ -174,8 +173,8 @@ export function CommentsPanel({
                 guidanceFamily={moderationFeedbackState.guidanceFamily}
                 retryAttempted={moderationFeedbackState.retryAttempted}
                 retrySucceeded={moderationFeedbackState.retrySucceeded}
-                title="방금 moderation 안내가 어땠는지 남겨주세요"
-                description="comment 흐름을 다듬는 베타 참고로만 쓰여요."
+                title="방금 안내가 어땠는지 짧게 알려주세요"
+                description="댓글 흐름을 더 조용하게 다듬는 참고로만 사용됩니다."
               />
             ) : null}
             <button

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionCard } from "@/components/section-card";
@@ -47,16 +48,24 @@ export default async function TracesPage() {
                   <p className="mt-2 text-sm leading-7 text-slate-600">{trace.postBodySnippet}</p>
                 )}
                 <div className="mt-4">
-                  {trace.postVisible ? (
+                  <div className="flex flex-wrap gap-3">
+                    {trace.postVisible ? (
+                      <Link
+                        href={`/wave/${trace.postId}`}
+                        className="text-sm font-medium text-cyan-900 underline-offset-4 hover:underline"
+                      >
+                        {systemCopy.privateResonance.openWave}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-slate-500">{systemCopy.moderation.interactionsPaused}</span>
+                    )}
                     <Link
-                      href={`/wave/${trace.postId}`}
-                      className="text-sm font-medium text-cyan-900 underline-offset-4 hover:underline"
+                      href={`/traces/${trace.id}/wave-draft` as Route}
+                      className="text-sm font-medium text-slate-700 underline-offset-4 hover:underline"
                     >
-                      {systemCopy.privateResonance.openWave}
+                      이 잔상을 파도로 옮겨보기
                     </Link>
-                  ) : (
-                    <span className="text-sm text-slate-500">{systemCopy.moderation.interactionsPaused}</span>
-                  )}
+                  </div>
                 </div>
               </article>
             ))}

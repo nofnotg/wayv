@@ -135,8 +135,10 @@ export const privateResonanceTraceSchema = z.object({
   sourcePath: nextPathSchema.nullable().optional()
 });
 
+export const COMMENT_MAX_LENGTH = 120;
+
 export const commentSchema = z.object({
-  body: z.string().trim().min(2).max(220)
+  body: z.string().trim().min(2).max(COMMENT_MAX_LENGTH)
 });
 
 export const feedbackSubmissionSchema = z.object({

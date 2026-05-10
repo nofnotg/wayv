@@ -7,8 +7,10 @@ import { commentSchema } from "@/lib/validation/schemas";
 import { presentCommentForViewer } from "@/lib/services/moderation-service";
 import {
   evaluateContentGuardrail,
+  pickHighestPriorityGuardrailResult,
   recordContentGuardrailFlag
 } from "@/lib/services/content-guardrail-service";
+import { evaluateCommentCultureGuardrail } from "@/lib/services/comment-culture-guardrail-service";
 import { recordProductEventSafe } from "@/lib/services/product-event-service";
 import { getWavePostAccess } from "@/lib/services/wave-access-service";
 import { refreshWaveSnapshot } from "@/lib/services/wave-state-service";
@@ -62,12 +64,16 @@ export async function createComment(
     throw new Error("interactions-paused");
   }
 
-  const guardrail = evaluateContentGuardrail({
-    targetType: "comment_body",
-    text: parsed.data.body,
-    userId
-  });
-  if (guardrail.action === "hard_block") {
+  const guardrail = pickHighestPriorityGuardrailResult([
+    evaluateContentGuardrail({
+      targetType: "comment_body",
+      text: parsed.data.body,
+      userId
+    }),
+    evaluateCommentCultureGuardrail(parsed.data.body)
+  ]);
+
+  if (guardrail && guardrail.action !== "allow") {
     await recordContentGuardrailFlag({
       targetType: guardrail.targetType,
       userId,
@@ -80,7 +86,7 @@ export async function createComment(
       suggestedAction: guardrail.suggestedAction ?? guardrail.action,
       guidanceFamily: guardrail.guidance?.family ?? null
     });
-    throw new Error(JSON.stringify({ error: "content-hard-block", moderation: guardrail }));
+    throw new Error(JSON.stringify({ error: "comment-guidance", moderation: guardrail }));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -91,10 +97,7 @@ export async function createComment(
       post_id: postId,
       user_id: userId,
       body: parsed.data.body,
-      moderation_status:
-        guardrail.action === "soft_hold" || guardrail.action === "safety_hold"
-          ? "under_review"
-          : "active",
+      moderation_status: "active",
       created_at: now,
       updated_at: now
     })
@@ -103,22 +106,6 @@ export async function createComment(
 
   if (error || !data?.id) {
     throw new Error(error?.message ?? "comment-create-failed");
-  }
-
-  if (guardrail.action !== "allow") {
-    await recordContentGuardrailFlag({
-      targetType: guardrail.targetType,
-      targetId: String(data.id),
-      userId,
-      action: guardrail.action,
-      reasons: guardrail.reasons,
-      matchedTerms: guardrail.matchedTerms,
-      contentExcerpt: guardrail.contentExcerpt,
-      originalText: parsed.data.body,
-      severity: guardrail.severity,
-      suggestedAction: guardrail.suggestedAction ?? guardrail.action,
-      guidanceFamily: guardrail.guidance?.family ?? null
-    });
   }
 
   await recordProductEventSafe({
@@ -139,6 +126,6 @@ export async function createComment(
   return {
     commentId: String(data.id),
     comments,
-    moderation: guardrail
+    moderation: null
   };
 }

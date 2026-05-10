@@ -8,6 +8,7 @@ import { ModerationFeedbackCard } from "@/features/moderation/moderation-feedbac
 import { WriteForm } from "@/features/write/write-form";
 import { systemCopy } from "@/lib/copy/system-copy";
 import { enforceApprovedViewerPageAccess } from "@/lib/services/beta-access-guard-service";
+import { getPrivateResonanceWaveDraftPrefill } from "@/lib/services/private-resonance-service";
 import { getViewerContext } from "@/lib/services/viewer-service";
 
 type WritePageProps = {
@@ -16,10 +17,14 @@ type WritePageProps = {
 
 export default async function WritePage({ searchParams }: WritePageProps) {
   const viewer = await getViewerContext();
-  await enforceApprovedViewerPageAccess({ viewer, nextPath: "/write" });
+  const approvedViewer = await enforceApprovedViewerPageAccess({ viewer, nextPath: "/write" });
 
   const params = (await searchParams) ?? {};
   const error = typeof params.error === "string" ? params.error : null;
+  const sourceTraceId = typeof params.sourceTraceId === "string" ? params.sourceTraceId : null;
+  const traceDraft = sourceTraceId
+    ? await getPrivateResonanceWaveDraftPrefill(sourceTraceId, approvedViewer.userId)
+    : null;
   const action = typeof params.action === "string" ? params.action : null;
   const targetType =
     typeof params.targetType === "string" && params.targetType === "post_title"
@@ -60,7 +65,16 @@ export default async function WritePage({ searchParams }: WritePageProps) {
             />
           </div>
         ) : null}
-        <WriteForm />
+        {sourceTraceId && !traceDraft ? (
+          <p className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            이 잔상은 현재 계정에서 파도 초안으로 열 수 없어요.
+          </p>
+        ) : null}
+        <WriteForm
+          initialTitle={traceDraft?.sourcePostTitle ? `남은 결: ${traceDraft.sourcePostTitle}` : null}
+          initialBody={traceDraft?.body ?? null}
+          sourceTraceMode={Boolean(traceDraft)}
+        />
       </SectionCard>
     </div>
   );

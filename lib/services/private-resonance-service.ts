@@ -162,3 +162,55 @@ export async function listRecentPrivateResonanceTraces(userId: string, limit = 2
 
   return (data ?? []).map((row) => mapTraceListRow(row as PrivateResonanceTraceRow));
 }
+
+export function buildPrivateResonanceWaveDraftBody(input: {
+  privateNote?: string | null;
+  postBodySnippet?: string | null;
+}) {
+  const note = input.privateNote?.trim();
+  if (note) {
+    return note;
+  }
+
+  return input.postBodySnippet?.trim() ?? "";
+}
+
+export async function getPrivateResonanceWaveDraftPrefill(traceId: string, userId: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("private_resonance_traces")
+    .select(
+      `
+      *,
+      wave_posts (
+        title,
+        body,
+        visibility_scope,
+        moderation_status
+      )
+    `
+    )
+    .eq("id", traceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const trace = mapTraceListRow(data as PrivateResonanceTraceRow);
+
+  return {
+    traceId: trace.id,
+    sourcePostId: trace.postId,
+    sourcePostTitle: trace.postTitle,
+    body: buildPrivateResonanceWaveDraftBody({
+      privateNote: trace.privateNote,
+      postBodySnippet: trace.postBodySnippet
+    })
+  };
+}

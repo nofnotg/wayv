@@ -1,13 +1,36 @@
+import Link from "next/link";
+
 import { createWavePostAction } from "@/lib/services/posts-service";
 
 import { SubmitButton } from "@/components/ui/submit-button";
 
-export function WriteForm() {
+type WriteFormProps = {
+  initialTitle?: string | null;
+  initialBody?: string | null;
+  sourceTraceMode?: boolean;
+};
+
+export function WriteForm({
+  initialTitle = null,
+  initialBody = null,
+  sourceTraceMode = false
+}: WriteFormProps) {
   return (
     <form action={createWavePostAction} className="grid gap-4">
+      {sourceTraceMode ? (
+        <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm leading-7 text-cyan-950">
+          잔상에서 시작한 파도예요. 바로 공개되지 않아요. 필요하면 그대로 지우거나,
+          당신의 말로 다시 고쳐도 괜찮아요.
+        </div>
+      ) : null}
+
       <label className="grid gap-2">
         <span className="text-sm font-medium text-slate-700">제목</span>
-        <input name="title" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" />
+        <input
+          name="title"
+          defaultValue={initialTitle ?? ""}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+        />
       </label>
       <label className="grid gap-2">
         <span className="text-sm font-medium text-slate-700">본문</span>
@@ -16,6 +39,7 @@ export function WriteForm() {
           rows={10}
           required
           minLength={20}
+          defaultValue={initialBody ?? ""}
           className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
         />
       </label>
@@ -65,12 +89,23 @@ export function WriteForm() {
       </fieldset>
       <label className="grid gap-2">
         <span className="text-sm font-medium text-slate-700">공개 범위</span>
-        <select name="visibility" defaultValue="public" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <select
+          name="visibility"
+          defaultValue="public"
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+        >
           <option value="public">공개 파도</option>
           <option value="private_archive">나만 보관하기</option>
         </select>
       </label>
-      <SubmitButton pendingLabel="파도를 남기는 중이에요...">파도 남기기</SubmitButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton pendingLabel="파도를 남기는 중이에요...">파도 남기기</SubmitButton>
+        {sourceTraceMode ? (
+          <Link href="/traces" className="text-sm font-medium text-slate-500 hover:text-slate-800">
+            아직 파도로 옮기지 않아도 괜찮아요
+          </Link>
+        ) : null}
+      </div>
     </form>
   );
 }
